@@ -1,33 +1,53 @@
-# Git and Other Systems #
+# Git and Other Systems / Git과 타 시스템 #
 
 The world isn’t perfect. Usually, you can’t immediately switch every project you come in contact with to Git. Sometimes you’re stuck on a project using another VCS, and many times that system is Subversion. You’ll spend the first part of this chapter learning about `git svn`, the bidirectional Subversion gateway tool in Git.
 
+세상은 완벽하지 않다. 보통 대부분의 프로젝트를 Git으로 옮겨오는 것은 쉽지 않다. 프로젝트가 다른 VCS 시스템에 매우 단단히 결합되어 있을 수 있으며, 보통 Subversion인 경우가 많다. 이번 장은 `git svn` 이라는 양방향으로 Subversion을 이용할 수 있는 도구를 알아보며 시작한다.
+
 At some point, you may want to convert your existing project to Git. The second part of this chapter covers how to migrate your project into Git: first from Subversion, then from Perforce, and finally via a custom import script for a nonstandard importing case. 
 
-## Git and Subversion ##
+언젠가 이미 존재하는 프로젝트 환경을 Git을 사용하는 환경으로 변경하고 싶게 될지도 모른다. 이 장의 나머지 부분에서 Git으로 프로젝트를 변경하는 방법에 대해 다룰 것이다. Subversion부터 시작해서 Perforce 그리고 사용자만의 스크립트를 만들어서 널리 쓰이지 않는 VCS로부터 프로젝트를 옮겨오는 방법을 다룰 것이다.
+
+## Git and Subversion / Git과 Subversion ##
 
 Currently, the majority of open source development projects and a large number of corporate projects use Subversion to manage their source code. It’s the most popular open source VCS and has been around for nearly a decade. It’s also very similar in many ways to CVS, which was the big boy of the source-control world before that.
 
+현재 주요 오픈소스 프로젝트와 아주 많은 수의 기업 프로젝트에서 소스코드 관리를 위해 Subversion을 사용한다. 10여년간 Subversion은 가장 인기있는 오픈소스 VCS 도구였다. 많은 부분에서 이전 시대에서 가장 많이 사용하였던 CVS와 많이 닮았다.
+
 One of Git’s great features is a bidirectional bridge to Subversion called `git svn`. This tool allows you to use Git as a valid client to a Subversion server, so you can use all the local features of Git and then push to a Subversion server as if you were using Subversion locally. This means you can do local branching and merging, use the staging area, use rebasing and cherry-picking, and so on, while your collaborators continue to work in their dark and ancient ways. It’s a good way to sneak Git into the corporate environment and help your fellow developers become more efficient while you lobby to get the infrastructure changed to support Git fully. The Subversion bridge is the gateway drug to the DVCS world.
+
+Git이 자랑하는 또 하나의 기능은 `git svn`이라는 양방향 Subversion 지원 도구이다. Git을 Subversion 서버를 사용하는 제대로 된 기능의 클라이언트로 사용할 수 있기 때문에 로컬에서는 Git의 기능을 활용하고 Push 할 때 Subversion 서버에 Push 할 수 있다. 즉 로컬 브랜치와 Merge, Stage 영역, Rebase, Chrry-pick 등의 Git 기능을 충분히 사용할 수 있다. 같이 일하는 동료는 선사시대 빛도 없는 곳에서 일하겠지만 말이다. `git svn`은 기업의 개발 환경에서 git을 사용하는 출발점으로 사용할 수 있고 우리가 Git을 도입하기 위해 기업내에서 노력하는 동안 동료가 효율적으로 환경을 바꿀 수 있도록 도움을 줄 수 잇다. Subversion 지원 도구는 DVCS 세상으로 인도하는 붉은 알약과 같은 것이다.
 
 ### git svn ###
 
 The base command in Git for all the Subversion bridging commands is `git svn`. You preface everything with that. It takes quite a few commands, so you’ll learn about the common ones while going through a few small workflows.
 
+Git과 Subversion을 이어주는 명령은 `git svn` 으로 시작한다. 이 명령 뒤에 추가적으로 몇 가지 더 명령이 정의되어 있으며 이어지는 작은 예제들을 통해 이해하도록 한다.
+
 It’s important to note that when you’re using `git svn`, you’re interacting with Subversion, which is a system that is far less sophisticated than Git. Although you can easily do local branching and merging, it’s generally best to keep your history as linear as possible by rebasing your work and avoiding doing things like simultaneously interacting with a Git remote repository.
+
+`git svn` 명령을 사용할 때는 턱없이 모자란 Subversion이 함께 동작한다는 점을 염두해두자. 우리가 로컬 브랜치와 머지 기능을 손쉽게 쓸 수 있다고 하더라도 최대한 일직선으로 히스토리를 유지하는것이 좋다. Git 저장소를 사용하는것 처럼 하지 않는 것이 좋다.
 
 Don’t rewrite your history and try to push again, and don’t push to a parallel Git repository to collaborate with fellow Git developers at the same time. Subversion can have only a single linear history, and confusing it is very easy. If you’re working with a team, and some are using SVN and others are using Git, make sure everyone is using the SVN server to collaborate — doing so will make your life easier.
 
-### Setting Up ###
+히스토리를 재작성하지 말아야 하고 Push를 재전송하지도 말아야 한다. 동시에 같은 Git 저장소에 Push하지도 말아야 한다. Subversion은 단순히 일직선의 히스토리만 가질 수 있다. 우리가 일부는 SVN을 일부는 Git을 사용하는 팀에 있을 때에는 협업을 위해서 모두가 SVN Server를 사용해야 한다. 그래야 삶이 편하다.
+
+### Setting Up / 설정하기 ###
 
 To demonstrate this functionality, you need a typical SVN repository that you have write access to. If you want to copy these examples, you’ll have to make a writeable copy of my test repository. In order to do that easily, you can use a tool called `svnsync` that comes with more recent versions of Subversion — it should be distributed with at least 1.4. For these tests, I created a new Subversion repository on Google code that was a partial copy of the `protobuf` project, which is a tool that encodes structured data for network transmission. 
 
+이 기능을 써보기이 위해 우리는 SVN 저장소 하나가 필요하다. 물론 쓰기 권한도 있어야 한다. 아래 나오는 예제를 써보려면 저자의 test 저장소를 하나 복사해야 한다. SVN 저장소를 복사하기 위해 최근의 Subversion(1.4 이상) 에 포함된 `svnsync`라는 도구를 사용할 수 있다. 테스트를 해보기 위해 저자는 Google Code에 새로 Subversion 저장소를 하나 만들었고 `protobuf` 라는 프로젝트의 일부 코드를 복사했다. `protobuf`는 네트워크 전송을 위한 구조화된 데이터(프로토콜 같은 것들)의 인코딩을 도와주는 도구이다.
+
 To follow along, you first need to create a new local Subversion repository:
+
+우선 로컬 Subversion 저장소를 하나 만들어야 한다.
 
 	$ mkdir /tmp/test-svn
 	$ svnadmin create /tmp/test-svn
 
 Then, enable all users to change revprops — the easy way is to add a pre-revprop-change script that always exits 0:
+
+그 다음, 모든 사용자가 revprops 속성을 변경할 수 있도록 pre-revprop-change 스크립트가 언제나 0을 반환하도록 변경한다. (역주: 파일이 없거나, 다른 이름으로 되어있을 수 있다. 이 경우 아래 내용으로 새로 파일을 만들고 실행 권한을 준다.)
 
 	$ cat /tmp/test-svn/hooks/pre-revprop-change 
 	#!/bin/sh
@@ -36,9 +56,13 @@ Then, enable all users to change revprops — the easy way is to add a pre-revpr
 
 You can now sync this project to your local machine by calling `svnsync init` with the to and from repositories.
 
+이제 `svnsync init` 명령으로 다른 Subversion 저장소를 로컬로 복사하도록 지정할 수 있다.
+
 	$ svnsync init file:///tmp/test-svn http://progit-example.googlecode.com/svn/ 
 
 This sets up the properties to run the sync. You can then clone the code by running
+
+위와 같이 다른 저장소의 주소를 설정함으로서 복사할 준비가 되었으며 아래 명령으로 저장소를 실제로 복사할 수 있다.
 
 	$ svnsync sync file:///tmp/test-svn
 	Committed revision 1.
@@ -50,9 +74,13 @@ This sets up the properties to run the sync. You can then clone the code by runn
 
 Although this operation may take only a few minutes, if you try to copy the original repository to another remote repository instead of a local one, the process will take nearly an hour, even though there are fewer than 100 commits. Subversion has to clone one revision at a time and then push it back into another repository — it’s ridiculously inefficient, but it’s the only easy way to do this.
 
-### Getting Started ###
+위 명령을 실행했을 때 몇 분 걸리지 않았더라도 저장하는 위치를 로컬이 아니라 원격 서버로 설정하면 이 과정은 엄청 시간이 걸릴것이다. 커밋이 100개 이하의 적은 경우라도 말이다. Subversion이 저장소를 복사하는 과정은 한번에 하나의 커밋을 받아서 Push하기 때문이며 엄청나게 비효율적이지만 저장소를 복사하는 유일한 방법이다.
+
+### Getting Started / 시작하기 ###
 
 Now that you have a Subversion repository to which you have write access, you can go through a typical workflow. You’ll start with the `git svn clone` command, which imports an entire Subversion repository into a local Git repository. Remember that if you’re importing from a real hosted Subversion repository, you should replace the `file:///tmp/test-svn` here with the URL of your Subversion repository:
+
+이제 갖고 놀 Subversion 저장소가 하나 준비되었다. `git svn clone` 명령으로 Subversion 저장소 전체를 Git 저장소로 가져올 수 있다. 만약 로컬의 Subversion 저장소에서 가져오는것이 아니라 서버의 Subversion 저장소에서 가져오려면 `file:///tmp/test-svn` 부분에 서버 저장소의 URL을 적어주어도 된다.
 
 	$ git svn clone file:///tmp/test-svn -T trunk -b branches -t tags
 	Initialized empty Git repository in /Users/schacon/projects/testsvnsync/svn/.git/
@@ -71,6 +99,8 @@ Now that you have a Subversion repository to which you have write access, you ca
 	 file:///tmp/test-svn/branches/my-calc-branch r76
 
 This runs the equivalent of two commands — `git svn init` followed by `git svn fetch` — on the URL you provide. This can take a while. The test project has only about 75 commits and the codebase isn’t that big, so it takes just a few minutes. However, Git has to check out each version, one at a time, and commit it individually. For a project with hundreds or thousands of commits, this can literally take hours or even days to finish.
+
+위 명령은 사실 `git svn init`과 SVN 저장소 주소를 지정하여 `git svn fetch` 두 명령을 순서대로 실행한 것과 같다. 명령이 수행되는데 시간이 약간 소요된다.
 
 The `-T trunk -b branches -t tags` part tells Git that this Subversion repository follows the basic branching and tagging conventions. If you name your trunk, branches, or tags differently, you can change these options. Because this is so common, you can replace this entire part with `-s`, which means standard layout and implies all those options. The following command is equivalent:
 
