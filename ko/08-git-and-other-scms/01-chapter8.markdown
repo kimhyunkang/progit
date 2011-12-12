@@ -100,13 +100,17 @@ Now that you have a Subversion repository to which you have write access, you ca
 
 This runs the equivalent of two commands — `git svn init` followed by `git svn fetch` — on the URL you provide. This can take a while. The test project has only about 75 commits and the codebase isn’t that big, so it takes just a few minutes. However, Git has to check out each version, one at a time, and commit it individually. For a project with hundreds or thousands of commits, this can literally take hours or even days to finish.
 
-위 명령은 사실 `git svn init`과 SVN 저장소 주소를 지정하여 `git svn fetch` 두 명령을 순서대로 실행한 것과 같다. 명령이 수행되는데 시간이 약간 소요된다.
+위 명령은 사실 `git svn init`과 SVN 저장소 주소를 지정하여 `git svn fetch` 두 명령을 순서대로 실행한 것과 같다. 명령이 끝나기에 제법 시간이 소요된다. 테스트로 사용하는 프로젝트가 75개 정도의 커밋만 가지고 있기 때문에 그렇게 시간이 많이 걸리지는 않는다. 하지만 한번은 Git이 커밋 하나하나 일일이 기록을 해야 하기 때문에 수천 커밋을 가진 어느정도 규모있는 프로젝트에서는 몇 시간 혹은 몇 일이 걸릴수도 있다.
 
 The `-T trunk -b branches -t tags` part tells Git that this Subversion repository follows the basic branching and tagging conventions. If you name your trunk, branches, or tags differently, you can change these options. Because this is so common, you can replace this entire part with `-s`, which means standard layout and implies all those options. The following command is equivalent:
+
+`-T trunk -b branches -t tags` 부분은 Git에게 Subversion이 어떤 브랜치 구조를 가지고 있는지 정보를 알려주는 부분이다. Subversion의 표준 형식과 다른 이름을 가지고 있다면 이 옵션 부분에서 알맞은 이름을 지정해줄 수 있다. 표준 형식을 사용한다면 간단하게 `-s` 옵션을 사용할 수 있다. 즉 아래의 명령도 같은 의미이다.
 
 	$ git svn clone file:///tmp/test-svn -s
 
 At this point, you should have a valid Git repository that has imported your branches and tags:
+
+브랜치와 태그 정보가 Git에서도 제대로 적용된 모습을 확인할 수 있다:
 
 	$ git branch -a
 	* master
@@ -119,6 +123,8 @@ At this point, you should have a valid Git repository that has imported your bra
 
 It’s important to note how this tool namespaces your remote references differently. When you’re cloning a normal Git repository, you get all the branches on that remote server available locally as something like `origin/[branch]` - namespaced by the name of the remote. However, `git svn` assumes that you won’t have multiple remotes and saves all its references to points on the remote server with no namespacing. You can use the Git plumbing command `show-ref` to look at all your full reference names:
 
+`git svn` 도구가 원격 브랜치의 이름을 어떻게 짓는가 알아두는 것이 중요하다. 일반적으로 Git 저장소를 복제할 경우 모든 브랜치는 `origin/[branch]` 처럼 원격 저장소의 이름을 가지고 모든 브랜치를 로컬에 복제해 놓는다. `git svn`은 우리가 여러 원격 저장소를 사용하지 않고 단 하나의 서버 저장소를 사용한다고 가정한다. 그렇기에 원격 저장소의 이름을 붙여서 원격 브랜치를 관리하지 않는다. Git의 좀 더 내부적인 명령인 `show-ref` 명령으로 완전한 리모트 브랜치들의 이름을 확인해볼 수 있다.
+
 	$ git show-ref
 	1cbd4904d9982f386d87f88fce1c24ad7c0f0471 refs/heads/master
 	aee1ecc26318164f355a883f5d99cff0c852d3c4 refs/remotes/my-calc-branch
@@ -130,6 +136,8 @@ It’s important to note how this tool namespaces your remote references differe
 
 A normal Git repository looks more like this:
 
+일반적인 Git 저장소의 경우라면 다음과 비슷할 것이다:
+
 	$ git show-ref
 	83e38c7a0af325a9722f2fdc56b10188806d83a1 refs/heads/master
 	3e15e38c198baac84223acfc6224bb8b99ff2281 refs/remotes/gitserver/master
@@ -138,17 +146,25 @@ A normal Git repository looks more like this:
 
 You have two remote servers: one named `gitserver` with a `master` branch; and another named `origin` with two branches, `master` and `testing`. 
 
+`master` 브랜치를 가진 `gitserver` 서버 저장소와 `master`, `testing` 두 브랜치를 가진 `origin` 이라는 서버 저장소를 확인해 볼 수 있다.
+
 Notice how in the example of remote references imported from `git svn`, tags are added as remote branches, not as real Git tags. Your Subversion import looks like it has a remote named tags with branches under it.
 
-### Committing Back to Subversion ###
+`git svn`으로 가져온 저장소의 경우 태그가 일반적인 Git 태그가 아니라 원격 브랜치로 등록되는점 등을 잘 기억해두자. Subversion 태그는 tags라는 이름의 원격 서버의 브랜치처럼 보일 것이다.
+
+### Committing Back to Subversion / Subversion 서버에 커밋하기 ###
 
 Now that you have a working repository, you can do some work on the project and push your commits back upstream, using Git effectively as a SVN client. If you edit one of the files and commit it, you have a commit that exists in Git locally that doesn’t exist on the Subversion server:
+
+자 이제 작업할 Git 저장소는 준비되었고, 무엇인가 수정을 하면 이제는 서버로 고친 내용을 Push 해야할 때가 왔다. Git을 Subversion의 클라이언트로 사용해서 효율적으로 수정한 내용을 전송할 수 있다. 어떤 파일을 수정하고 커밋을 하게 되면, 그 수정한 내용은 Git의 로컬 저장소에 저장되지만 Subversion 서버에는 아직 반영되지 않는다.
 
 	$ git commit -am 'Adding git-svn instructions to the README'
 	[master 97031e5] Adding git-svn instructions to the README
 	 1 files changed, 1 insertions(+), 1 deletions(-)
 
 Next, you need to push your change upstream. Notice how this changes the way you work with Subversion — you can do several commits offline and then push them all at once to the Subversion server. To push to a Subversion server, you run the `git svn dcommit` command:
+
+이제 서버로 수정한 내용을 전송할 때가 왔다. 하나 유심히 살펴볼 부분은 Git 저장소에 여러개의 커밋을 쌓아놓고 Subversion 서버로는 해당 커밋을 한번에 보낼 수 있다는 점이다. 서버로 Push하기 위해서 `git svn dcommit` 명령을 사용한다:
 
 	$ git svn dcommit
 	Committing to file:///tmp/test-svn/trunk ...
@@ -160,6 +176,8 @@ Next, you need to push your change upstream. Notice how this changes the way you
 	Resetting to the latest refs/remotes/trunk
 
 This takes all the commits you’ve made on top of the Subversion server code, does a Subversion commit for each, and then rewrites your local Git commit to include a unique identifier. This is important because it means that all the SHA-1 checksums for your commits change. Partly for this reason, working with Git-based remote versions of your projects concurrently with a Subversion server isn’t a good idea. If you look at the last commit, you can see the new `git-svn-id` that was added:
+
+이 명령은 앞서 가져온 Subversion 코드 이후에 추가된 커밋들을 각각 Subversion 커밋으로 만들고 다시 로컬 Git 커밋을 재작성 한다. 커밋이 재작성 되므로 이미 저장되어있던 커밋의 SHA-1 체크섬이 바뀌게 된다는 점을 알아둘 필요가 있다. 이런 이유에서 
 
 	$ git log -1
 	commit 938b1a547c2cc92033b74d32030e86468294a5c8
