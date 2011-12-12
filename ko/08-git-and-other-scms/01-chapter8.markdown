@@ -177,7 +177,7 @@ Next, you need to push your change upstream. Notice how this changes the way you
 
 This takes all the commits you’ve made on top of the Subversion server code, does a Subversion commit for each, and then rewrites your local Git commit to include a unique identifier. This is important because it means that all the SHA-1 checksums for your commits change. Partly for this reason, working with Git-based remote versions of your projects concurrently with a Subversion server isn’t a good idea. If you look at the last commit, you can see the new `git-svn-id` that was added:
 
-이 명령은 앞서 가져온 Subversion 코드 이후에 추가된 커밋들을 각각 Subversion 커밋으로 만들고 다시 로컬 Git 커밋을 재작성 한다. 커밋이 재작성 되므로 이미 저장되어있던 커밋의 SHA-1 체크섬이 바뀌게 된다는 점을 알아둘 필요가 있다. 이런 이유에서 
+이 명령은 앞서 가져온 Subversion 코드 이후에 추가된 커밋들을 각각 Subversion 커밋으로 만들고 다시 로컬 Git 커밋을 재작성 한다. 커밋이 다시 써지기 때문에 이미 저장되어 있던 커밋의 SHA-1 체크섬이 바뀌게 된다는 점을 알아둘 필요가 있다. 이런 이유에서 Git 기반의 리모트를 Subversion 서버와 함께 사용하는 것은 좋은 생각이 아니다. 업데이트된 커밋을 살펴보면 아래와 같이 `git-svn-id` 내용이 추가된 것을 볼 수 있다:
 
 	$ git log -1
 	commit 938b1a547c2cc92033b74d32030e86468294a5c8
@@ -190,9 +190,13 @@ This takes all the commits you’ve made on top of the Subversion server code, d
 
 Notice that the SHA checksum that originally started with `97031e5` when you committed now begins with `938b1a5`. If you want to push to both a Git server and a Subversion server, you have to push (`dcommit`) to the Subversion server first, because that action changes your commit data.
 
-### Pulling in New Changes ###
+원래 `97031e5`로 시작하는 SHA 체크섬이 지금은 `938b1a5`로 시작하는 체크섬으로 업데이트 되었다. 만약 Git 서버와 Subversion 서버에 함께 Push 하고 싶다면 우선 Subversion 서버에 `dcommit`으로 먼저 Push를 하고 그 다음에 업데이트된 커밋을 Git 서버에 Push 해야 한다.
+
+### Pulling in New Changes / 새로운 변경사항 받아오기 ###
 
 If you’re working with other developers, then at some point one of you will push, and then the other one will try to push a change that conflicts. That change will be rejected until you merge in their work. In `git svn`, it looks like this:
+
+다른 개발자들과 함께 일하는 과정에서 Conflict가 발생하는 Push를 하게 될 경우도 있다. 이런 경우 변경사항을 서버로 Push하는 것은 해당 Conflict를 처리하지 않으면 거절당한다. `git svn`을 사용하는 경우 다음과 같은 내용이다:
 
 	$ git svn dcommit
 	Committing to file:///tmp/test-svn/trunk ...
@@ -202,6 +206,8 @@ If you’re working with other developers, then at some point one of you will pu
 
 To resolve this situation, you can run `git svn rebase`, which pulls down any changes on the server that you don’t have yet and rebases any work you have on top of what is on the server:
 
+이런 상황에서 문제를 해결하기 위해 `git svn rebase` 명령을 사용할 수 있다. 이 명령은 서버에서 변경사항을 내려받고 그 다음에 로컬의 변경사항들을 그 위에 적용한다:
+
 	$ git svn rebase
 	       M      README.txt
 	r80 = ff829ab914e8775c7c025d741beb3d523ee30bc4 (trunk)
@@ -209,6 +215,8 @@ To resolve this situation, you can run `git svn rebase`, which pulls down any ch
 	Applying: first user change
 
 Now, all your work is on top of what is on the Subversion server, so you can successfully `dcommit`:
+
+그러고 나면 변경사항들이 서버의 코드 위에 적용이 되었기 때문에 성공적으로 `dcommit` 명령을 마칠 수 있다:
 
 	$ git svn dcommit
 	Committing to file:///tmp/test-svn/trunk ...
@@ -220,6 +228,8 @@ Now, all your work is on top of what is on the Subversion server, so you can suc
 	Resetting to the latest refs/remotes/trunk
 
 It’s important to remember that unlike Git, which requires you to merge upstream work you don’t yet have locally before you can push, `git svn` makes you do that only if the changes conflict. If someone else pushes a change to one file and then you push a change to another file, your `dcommit` will work fine:
+
+Push하기 전에 서버의 내용을 Merge하는 Git과 달리 `git svn`은 Conflict가 발생했을때에만 사용자에게 서버의 내용으로 업데이트하기를 요청한다는 점을 알아두는 것이 중요하다. 만약 서로 다른 파일을 수정했을 경우라면 `dcommit`은 성공적으로 수행되었을 것이다:
 
 	$ git svn dcommit
 	Committing to file:///tmp/test-svn/trunk ...
@@ -237,6 +247,8 @@ It’s important to remember that unlike Git, which requires you to merge upstre
 	Nothing to do.
 
 This is important to remember, because the outcome is a project state that didn’t exist on either of your computers when you pushed. If the changes are incompatible but don’t conflict, you may get issues that are difficult to diagnose. This is different than using a Git server — in Git, you can fully test the state on your client system before publishing it, whereas in SVN, you can’t ever be certain that the states immediately before commit and after commit are identical.
+
+
 
 You should also run this command to pull in changes from the Subversion server, even if you’re not ready to commit yourself. You can run `git svn fetch` to grab the new data, but `git svn rebase` does the fetch and then updates your local commits.
 
