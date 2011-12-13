@@ -324,6 +324,8 @@ Subversion 브랜치를 새로 만들기 위해서 `git svn branch [branchname]`
 
 This does the equivalent of the `svn copy trunk branches/opera` command in Subversion and operates on the Subversion server. It’s important to note that it doesn’t check you out into that branch; if you commit at this point, that commit will go to `trunk` on the server, not `opera`.
 
+위 명령은 Subversion의 `svn copy trunk branches/opera` 명령과 동일한 일을 한다. 여기서 주의해야할 점은 이 명령으로 브랜치를 옮겨가지는 않는다는 점이다. 지금 상황에서 커밋을 하면 `opera` 브랜치가 아니라 `trunk` 브랜치에 적용이 된다.
+
 ### Switching Active Branches ###
 
 Git figures out what branch your dcommits go to by looking for the tip of any of your Subversion branches in your history — you should have only one, and it should be the last one with a `git-svn-id` in your current branch history. 
