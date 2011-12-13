@@ -428,20 +428,33 @@ This is like `blame` and `log` in that it runs offline and is up to date only as
 
 If you clone a Subversion repository that has `svn:ignore` properties set anywhere, you’ll likely want to set corresponding `.gitignore` files so you don’t accidentally commit files that you shouldn’t. `git svn` has two commands to help with this issue. The first is `git svn create-ignore`, which automatically creates corresponding `.gitignore` files for you so your next commit can include them.
 
+실수로 커밋하지 말아야 할 파일을 커밋하지 않게 도와주는 `svn:ignore` 속성이 설정되어 있는 Subversion 저장소를 내려받으면 해당 위치에 `.gitignore` 파일 또한 만들고 싶은 생각이 들 것이다. `git svn`은 이런 소원을 들어주기 위해 두 가지 묘안을 갖고 잇다. 하나는 `git svn create-ignore` 명령이며 해당 위치에 다음 커밋에 포함시킬 수 있는 `.gitignore` 파일을 생성해준다.
+
 The second command is `git svn show-ignore`, which prints to stdout the lines you need to put in a `.gitignore` file so you can redirect the output into your project exclude file:
+
+두 번째 방법은 `git svn show-ignore` 명령이며 현재 화면에 `.gitignore`에 추가해야 할 목록을 보여준다. 리다이렉트를 사용하여 출력 결과를 프로젝트 exclude 파일에 보낼 수 있다:
 
 	$ git svn show-ignore > .git/info/exclude
 
 That way, you don’t litter the project with `.gitignore` files. This is a good option if you’re the only Git user on a Subversion team, and your teammates don’t want `.gitignore` files in the project.
 
-### Git-Svn Summary ###
+이 방법을 사용하면 여러 `.gitignore` 파일들을 생성하지 않아도 된다. 여러분이 팀에서 Subversion 저장소를 사용하는 사람중에 Git을 쓰는 유일한 사람이라면, 팀원들이 `.gitignore` 파일을 보기 싫어한다면 이 방법이 좋은 묘안이 될 것이다.
+
+### Git-Svn Summary / Git-Svn 요약 ###
 
 The `git svn` tools are useful if you’re stuck with a Subversion server for now or are otherwise in a development environment that necessitates running a Subversion server. You should consider it crippled Git, however, or you’ll hit issues in translation that may confuse you and your collaborators. To stay out of trouble, try to follow these guidelines:
+
+`git svn` 도구는 여러가지 이유로 Subversion 서버를 사용해야만 하는 상황에서 빛을 발한다. 하지만 Git의 모든 장점을 이용할 수는 없다. 또는 Git과 Subversion이 다른 이유로 혼란스러운 상황을 맞이할 수도 있다. 이런 문제로부터 거리를 두기 위해서는 아래의 가이드라인을 지키고자 노력할 필요가 있다:
 
 * Keep a linear Git history that doesn’t contain merge commits made by `git merge`. Rebase any work you do outside of your mainline branch back onto it; don’t merge it in.
 * Don’t set up and collaborate on a separate Git server. Possibly have one to speed up clones for new developers, but don’t push anything to it that doesn’t have a `git-svn-id` entry. You may even want to add a `pre-receive` hook that checks each commit message for a `git-svn-id` and rejects pushes that contain commits without it.
 
+* Git 히스토리를 일직선으로 유지하라. `git merge`로 Merge 커밋이 생기지 않도록 하라. Merge를 하지 말고 Rebase를 사용하여 변경사항을 Master 브랜치에 적용하라.
+* 따로 Git 저장소 서버를 두지 말라. 복제를 빨리 하기 위해서 하나쯤 두는 것은 무방하나 절대로 Git 서버에 Push하지는 말아야 한다. 혹은 `pre-receive` 훅 스크립트에서 커밋 메시지에 `git-svn-id` 내용을 포함하는 커밋은 거절하도록 설정해야 한다.
+
 If you follow those guidelines, working with a Subversion server can be more bearable. However, if it’s possible to move to a real Git server, doing so can gain your team a lot more.
+
+이러한 가이드라인을 지키면 Subversion 서버를 사용하는 것도 쓸만하다. 그렇다고 하더라도 진짜 Git 서버를 사용할 수 있는 상황이라면 진짜 Git 서버를 사용하는 것이 훨씬 얻을 것이 많다.
 
 ## Migrating to Git ##
 
