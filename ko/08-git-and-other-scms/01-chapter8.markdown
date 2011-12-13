@@ -196,7 +196,7 @@ Notice that the SHA checksum that originally started with `97031e5` when you com
 
 If you’re working with other developers, then at some point one of you will push, and then the other one will try to push a change that conflicts. That change will be rejected until you merge in their work. In `git svn`, it looks like this:
 
-다른 개발자들과 함께 일하는 과정에서 Conflict가 발생하는 Push를 하게 될 경우도 있다. 이런 경우 변경사항을 서버로 Push하는 것은 해당 Conflict를 처리하지 않으면 거절당한다. `git svn`을 사용하는 경우 다음과 같은 내용이다:
+다른 개발자들과 함께 일하는 과정에서 다른 개발자가 Push한 상태에서 Push를 하게 되면 Conflict가 발생하게 될 경우도 있다. 이런 경우 변경사항을 해당 Conflict를 처리하지 않으면 서버로 Push하는 것은 거절된다. `git svn`을 사용하는 경우 아래와 같은 상황일 것이다:
 
 	$ git svn dcommit
 	Committing to file:///tmp/test-svn/trunk ...
@@ -248,9 +248,11 @@ Push하기 전에 서버의 내용을 Merge하는 Git과 달리 `git svn`은 Con
 
 This is important to remember, because the outcome is a project state that didn’t exist on either of your computers when you pushed. If the changes are incompatible but don’t conflict, you may get issues that are difficult to diagnose. This is different than using a Git server — in Git, you can fully test the state on your client system before publishing it, whereas in SVN, you can’t ever be certain that the states immediately before commit and after commit are identical.
 
-
+이 부분이 왜 중요하냐면 Push하고 난 프로젝트 코드의 상태가 Push하기 이전의 상태와 같지 않기 때문이다. 변경사항이 원하는 바 대로 적용되지 않았음에도 Conflict가 발생하지 않았다면 코드를 분석하기가 까다로워진다. 이러한 부분이 Git과 다른점인데 Git에서는 서버로 보내기 전에 프로젝트 코드의 모든 상태를 테스트해 볼 수 있다. 하지만 SVN에서는 서버로 커밋하기 이전의 상태와 그 이후의 상태가 동일한 상태라는 것을 확신할 수 없다.
 
 You should also run this command to pull in changes from the Subversion server, even if you’re not ready to commit yourself. You can run `git svn fetch` to grab the new data, but `git svn rebase` does the fetch and then updates your local commits.
+
+또는 Subversion 서버로부터 변경사항을 가져오기 위한 목적으로도 `git svn rebase` 명령을 사용할 수 있다. 커밋을 보낼 준비가 되지 않았다 해도 말이다. `git svn fetch` 명령을 사용할수도 있지만 `git svn rebase` 명령을 통해 변경사항을 가져오고 로컬에 적용까지 한 번에 할 수 있다.
 
 	$ git svn rebase
 	       M      generate_descriptor_proto.sh
@@ -260,11 +262,17 @@ You should also run this command to pull in changes from the Subversion server, 
 
 Running `git svn rebase` every once in a while makes sure your code is always up to date. You need to be sure your working directory is clean when you run this, though. If you have local changes, you must either stash your work or temporarily commit it before running `git svn rebase` — otherwise, the command will stop if it sees that the rebase will result in a merge conflict.
 
-### Git Branching Issues ###
+수시로 `git svn rebase` 명령을 사용한다면 로컬 코드는 항상 서버의 새로운 변경사항이 적용되어 있을 것이다. 이 명령을 사용하기 전에 항상 작업하고 있는 디렉토리의 변경상태를 깨끗하게 유지하는 것이 좋다. 로컬 변경사항이 있는 경우 Stash를 하거나 임시로 커밋을 하고 난 후에 `git svn rebase` 명령을 실행하는 것이 좋다. 그렇지 않으면 Conflict가 발생했을 때 실행되던 명령이 중지되는 것을 보게 될 것이다.
+
+### Git Branching Issues / Git 브랜치 문제 ###
 
 When you’ve become comfortable with a Git workflow, you’ll likely create topic branches, do work on them, and then merge them in. If you’re pushing to a Subversion server via git svn, you may want to rebase your work onto a single branch each time instead of merging branches together. The reason to prefer rebasing is that Subversion has a linear history and doesn’t deal with merges like Git does, so git svn follows only the first parent when converting the snapshots into Subversion commits.
 
+Git의 워크플로우에 익숙해졌다면 뭔가 일을 할 때 토픽 브랜치를 만들고 다시 Merge하는 방식을 쓰려고 할 것이다. `git svn`을 사용하여 Subversion 서버로 Push하려고 할 때 먼저 서버의 변경사항을 로컬에 적용해야 하는데 이 때 여러 브랜치를 Merge 하는 것이 아니라 하나의 브랜치에 서버의 내용을 Rebase로 적용하게 될 것이다. Git과 달리 Subversion의 경우 히스토리를 일직선으로 관리하기 때문에 Rebase를 사용하는 편이 더 나을 것이며 `git svn` 또한 커밋을 Subversion 커밋으로 변경할 때 하나의 부모 커밋만 가지도록 변경하기 때문이다.
+
 Suppose your history looks like the following: you created an `experiment` branch, did two commits, and then merged them back into `master`. When you `dcommit`, you see output like this:
+
+`experiment` 브랜치를 하나 만들고 2개의 변경사항을 커밋하고 `master` 브랜치로 Merge 했을 때 변경사항의 히스토리를 가지고 `dcommit` 명령을 수행하면 아래와 같은 모양이 될 것이다.
 
 	$ git svn dcommit
 	Committing to file:///tmp/test-svn/trunk ...
@@ -287,15 +295,23 @@ Suppose your history looks like the following: you created an `experiment` branc
 
 Running `dcommit` on a branch with merged history works fine, except that when you look at your Git project history, it hasn’t rewritten either of the commits you made on the `experiment` branch — instead, all those changes appear in the SVN version of the single merge commit.
 
+브랜치를 Merge한 히스토리(역주: Not FF)가 있는 브랜치에서 `dcommit` 명령을 수행하고 Git 히스토리를 살펴보면 `experiment` 브랜치의 커밋들이 재작성되지 않은 모습을 볼 수 있다. 대신 이 커밋들의 변경사항은 하나의 SVN 커밋으로 서버로 전송되어 기록되었다.
+
 When someone else clones that work, all they see is the merge commit with all the work squashed into it; they don’t see the commit data about where it came from or when it was committed.
 
-### Subversion Branching ###
+다른 사람이 이 변경사항을 내려받아 본다면 `experiment` 브랜치의 모든 변경사항이 하나의 Merge 커밋으로 모아져서 기록된 것으로 보인다. 어떤 브랜치인지 언제 쓰여졌는지는 알 수 없다.
+
+### Subversion Branching / Subversion의 브랜치 기능 ###
 
 Branching in Subversion isn’t the same as branching in Git; if you can avoid using it much, that’s probably best. However, you can create and commit to branches in Subversion using git svn.
+
+Subversion의 브랜치 기능은 Git의 브랜치와 같지 않아서 가능한 사용을 하지 않는 것이 좋다. 하지만 불가능한 것은 아니며 `git svn`으로 Subversion 브랜치를 사용할 수 있다.
 
 #### Creating a New SVN Branch ####
 
 To create a new branch in Subversion, you run `git svn branch [branchname]`:
+
+Subversion 브랜치를 새로 만들기 위해서 `git svn branch [branchname]` 명령을 사용한다:
 
 	$ git svn branch opera
 	Copying file:///tmp/test-svn/trunk at r87 to file:///tmp/test-svn/branches/opera...
