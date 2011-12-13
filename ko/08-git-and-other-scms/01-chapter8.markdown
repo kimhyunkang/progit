@@ -326,25 +326,37 @@ This does the equivalent of the `svn copy trunk branches/opera` command in Subve
 
 위 명령은 Subversion의 `svn copy trunk branches/opera` 명령과 동일한 일을 한다. 여기서 주의해야할 점은 이 명령으로 브랜치를 옮겨가지는 않는다는 점이다. 지금 상황에서 커밋을 하면 `opera` 브랜치가 아니라 `trunk` 브랜치에 적용이 된다.
 
-### Switching Active Branches ###
+### Switching Active Branches / Subversion의 활성 브랜치 변경 ###
 
-Git figures out what branch your dcommits go to by looking for the tip of any of your Subversion branches in your history — you should have only one, and it should be the last one with a `git-svn-id` in your current branch history. 
+Git figures out what branch your dcommits go to by looking for the tip of any of your Subversion branches in your history — you should have only one, and it should be the last one with a `git-svn-id` in your current branch history.
+
+`dcommit` 명령이 실행될 때 어떤 브랜치로 커밋들이 전송될지 Git은 히스토리를 뒤져서 Subversion 브랜치가 가장 최근에 가까운지 찾아본다. 최소한 하나 이상 커밋이 존재할텐데 커밋을 살펴보면 `git-svn-id`에 어떤 브랜치를 사용하고 있는지 확인할 수 있다.
 
 If you want to work on more than one branch simultaneously, you can set up local branches to `dcommit` to specific Subversion branches by starting them at the imported Subversion commit for that branch. If you want an `opera` branch that you can work on separately, you can run
+
+하나 이상의 여러 브랜치에서 동시에 작업을 하려고 한다면 현재 로컬 브랜치가 `dcommit` 명령이 실행되었을 때 어떤 Subversion 브랜치에 전송을 할 지 (by starting them at the imported Subversion commit for that branch) 지정해줄 수 있다. `opera` 브랜치를 따로 떼어내서 작업하려면 다음과 같이 지정한다:
 
 	$ git branch opera remotes/opera
 
 Now, if you want to merge your `opera` branch into `trunk` (your `master` branch), you can do so with a normal `git merge`. But you need to provide a descriptive commit message (via `-m`), or the merge will say "Merge branch opera" instead of something useful.
 
+`opera` 브랜치를 `trunk` 브랜치(`master` 브랜치 역할)에 Merge하려면 일반적인 `git merge` 명령을 사용하면 된다. 하지만 `-m` 옵셥으로 적절한 커밋 메시지를 지정해주지 않으면 그저 "Mege branch opera"와 같은 메시지만 커밋에 남게 된다.
+
 Remember that although you’re using `git merge` to do this operation, and the merge likely will be much easier than it would be in Subversion (because Git will automatically detect the appropriate merge base for you), this isn’t a normal Git merge commit. You have to push this data back to a Subversion server that can’t handle a commit that tracks more than one parent; so, after you push it up, it will look like a single commit that squashed in all the work of another branch under a single commit. After you merge one branch into another, you can’t easily go back and continue working on that branch, as you normally can in Git. The `dcommit` command that you run erases any information that says what branch was merged in, so subsequent merge-base calculations will be wrong — the dcommit makes your `git merge` result look like you ran `git merge --squash`. Unfortunately, there’s no good way to avoid this situation — Subversion can’t store this information, so you’ll always be crippled by its limitations while you’re using it as your server. To avoid issues, you should delete the local branch (in this case, `opera`) after you merge it into trunk.
 
-### Subversion Commands ###
+`git merge` 명령을 사용했다고 해서 실제 Git의 Merge 결과가 되는 것은 아니다. 물론 Git의 Merge는 Subversion의 Merge보다 Merge Base(Merge의 기반이 되는 지점)을 쉽게 찾을 수 있기 때문에 쉽게 Merge를 할 수 있다. Subversion 서버에 Merge한 사항을 Push해야하는데 Subversion 서버는 기본적으로 이러한 하나 이상의 부모를 가지는 커밋을 처리할 수 있는 능력이 없다. 그렇기 때문에 `git svn`이 Subversion 서버로 Push하고 나면 Merge된 브랜치에서 변경된 사항은 단 하나의 커밋으로만 남겨놓는다. 이렇게 Merge된 커밋들은 쉽게 다시 이어서 사용하기가 어렵다. `dcommit` 명령을 수행하면 Merge된 브랜치의 정보를 어쩔 수 없이 잃어버리게 되는데 이로인해 Merge Base를 찾기도 힘들어진다. `dcommit` 명령을 실행하게 되면 `git merge`한 내용은 `git merge --squash` 한 것과 같은 결과가 된다. 불행히도 Subversion의 Branch의 Merge 정보를 처리할 수 없기 때문에 이렇게 어쩔 수 없는 상황을 피할 길이 없다. 이러한 문제를 되도록 피하기 위해서는 Merge한 후에 바로 해당 Branch(이 상황에서는 `opera`)를 삭제하도록 한다.
+
+### Subversion Commands / Subversion 명령 ###
 
 The `git svn` toolset provides a number of commands to help ease the transition to Git by providing some functionality that’s similar to what you had in Subversion. Here are a few commands that give you what Subversion used to.
 
-#### SVN Style History ####
+`git svn` 명령은 Subversion의 일부 기능을 지원하는 비슷한 명령을 제공하여 Git으로 쉽게 이전하도록 돕는다. 아래 몇가지 명령은 Subversion에서 익히 사용하던 것들이다. 
+
+#### SVN Style History / SVN 형식의 히스토리 ####
 
 If you’re used to Subversion and want to see your history in SVN output style, you can run `git svn log` to view your commit history in SVN formatting:
+
+Subversion에 익숙한 사람은 Git 히스토리를 SVN 형식의 히스토리로 보았으면 할지도 모른다. `git svn log` 명령으로 SVN 형식의 히스토리를 볼 수 있다:
 
 	$ git svn log
 	------------------------------------------------------------------------
@@ -364,9 +376,13 @@ If you’re used to Subversion and want to see your history in SVN output style,
 
 You should know two important things about `git svn log`. First, it works offline, unlike the real `svn log` command, which asks the Subversion server for the data. Second, it only shows you commits that have been committed up to the Subversion server. Local Git commits that you haven’t dcommited don’t show up; neither do commits that people have made to the Subversion server in the meantime. It’s more like the last known state of the commits on the Subversion server.
 
-#### SVN Annotation ####
+`git svn log`에서 두 가지 정도 기억해 둘 점이 있다. 우선 오프라인에서 동작한다는 점인데 실제 `svn log` 명령어는 히스토리 데이터를 조회하기 위해 서버를 필요로 한다. 또한 이미 서버로 전송한 커밋만 출력해준다는 점이다. 아직 `dcommit` 명령으로 서버로 전송하지 않은 로컬 Git 커밋을 보여주지는 않는다. Subversion 서버에 기록되어 있지만 아직 내려받지 않은 변경사항도 보여주지 않는다. 즉, 현재 알고있는 Subversion 서버의 상태를 보여주는 것이다.
+
+#### SVN Annotation / SVN 어노테이션 ####
 
 Much as the `git svn log` command simulates the `svn log` command offline, you can get the equivalent of `svn annotate` by running `git svn blame [FILE]`. The output looks like this:
+
+`git svn log` 명령이 `svn log` 명령을 오프라인에서 비슷하게 따라하는 것 처럼 `svn annotate` 명령 또한 `git svn blame [FILE]` 명령으로 실행 가능하다. 실행한 결과는 다음과 같을 것이다:
 
 	$ git svn blame README.txt 
 	 2   temporal Protocol Buffers - Google's data interchange format
@@ -384,9 +400,13 @@ Much as the `git svn log` command simulates the `svn log` command offline, you c
 
 Again, it doesn’t show commits that you did locally in Git or that have been pushed to Subversion in the meantime.
 
-#### SVN Server Information ####
+다시한번 말하지만 이 명령 또한 아직 서버로 전송하지 않은 로컬 Git 저장소의 커밋을 출력하지 않는다.
+
+#### SVN Server Information / SVN 서버 정보 ####
 
 You can also get the same sort of information that `svn info` gives you by running `git svn info`:
+
+`svn info` 명령은 `git svn info` 명령으로 대신할 수 있다:
 
 	$ git svn info
 	Path: .
@@ -402,7 +422,9 @@ You can also get the same sort of information that `svn info` gives you by runni
 
 This is like `blame` and `log` in that it runs offline and is up to date only as of the last time you communicated with the Subversion server.
 
-#### Ignoring What Subversion Ignores ####
+`blame`이나 `log`명령이 오프라인에서 동작 가능하듯 이 명령 또한 가장 마지막으로 서버에서 정보를 내려받은 시점에 대한 정보를 출력한다.
+
+#### Ignoring What Subversion Ignores / Subversion에서 무시하는것 무시하기 ####
 
 If you clone a Subversion repository that has `svn:ignore` properties set anywhere, you’ll likely want to set corresponding `.gitignore` files so you don’t accidentally commit files that you shouldn’t. `git svn` has two commands to help with this issue. The first is `git svn create-ignore`, which automatically creates corresponding `.gitignore` files for you so your next commit can include them.
 
