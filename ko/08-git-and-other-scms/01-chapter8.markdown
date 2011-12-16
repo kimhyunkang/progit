@@ -460,31 +460,47 @@ If you follow those guidelines, working with a Subversion server can be more bea
 
 If you have an existing codebase in another VCS but you’ve decided to start using Git, you must migrate your project one way or another. This section goes over some importers that are included with Git for common systems and then demonstrates how to develop your own custom importer.
 
-### Importing ###
+다른 버전관리 시스템으로 관리하는 프로젝트를 Git 기반으로 사용하고 싶다면 우선 프로젝트를 Git 프로젝트로 이전(Migrate)해야 한다. 이번 절에서는 Git에 포함된 가져오기 도구들을 살펴보고 널리 쓰이는 버전관리 도구로부터 가져오는 방법이나 새로 가져오기 도구를 만들어서 사용하는 방법을 알아볼 것이다.
+
+### Importing / 가져오기 ###
 
 You’ll learn how to import data from two of the bigger professionally used SCM systems — Subversion and Perforce — both because they make up the majority of users I hear of who are currently switching, and because high-quality tools for both systems are distributed with Git.
+
+널리 사용되는 버전 관리 시스템 중 Subversion과 Perforce로부터 프로젝트를 이전하는 방법을 살펴볼 것이다. 이 두가지 버전 관리 시스템은 들어봤던 이야기 중 Git 기반으로 프로젝트를 변경하고자 하는 주요 시스템이었으며 Git에도 관련 시스템의 가져오기 도구가 포함되어 배포된다.
 
 ### Subversion ###
 
 If you read the previous section about using `git svn`, you can easily use those instructions to `git svn clone` a repository; then, stop using the Subversion server, push to a new Git server, and start using that. If you want the history, you can accomplish that as quickly as you can pull the data out of the Subversion server (which may take a while).
 
+앞서 살펴본 `git svn` 절을 읽어봤다면 `git svn clone` 명령으로 손쉽게 저장소를 가져올 수 있다. 가져오고 난 다음에 Subversion 서버를 중지하고 새로 Git 서버를 사용하면 된다. 히스토리 정보 또한 (느린) Subversion 서버 없이 로컬에서 조회해 볼 수 있다.
+
 However, the import isn’t perfect; and because it will take so long, you may as well do it right. The first problem is the author information. In Subversion, each person committing has a user on the system who is recorded in the commit information. The examples in the previous section show `schacon` in some places, such as the `blame` output and the `git svn log`. If you want to map this to better Git author data, you need a mapping from the Subversion users to the Git authors. Create a file called `users.txt` that has this mapping in a format like this:
+
+이 가져오기 기능이 완벽한 것은 아니며 가져오기 과정 또한 시간과 수고가 어느정도 들기 때문에 바로 뭔가 작업을 시작 할 수 있는 것은 아니다. 우선 저자 정보에 문제가 있다. Subversion의 각 커밋에 커밋을 작성한 사람의 정보가 기록되어 있는데 예를 들어 앞 절에서 `blame`이나 `git svn log`와 같은 명령에서 `schacon`이라는 이름을 볼 수 있다. 이 저자 정보를 좀 더 나은 Git 저자 정보로 변경하기 위해서 Subversion 사용자 이름과 Git 저자 간에 연결을 해 주어야 한다. `users.txt`라는 파일을 만들어서 다음과 같이 연결 규칙을 만든다.
 
 	schacon = Scott Chacon <schacon@geemail.com>
 	selse = Someo Nelse <selse@geemail.com>
 
 To get a list of the author names that SVN uses, you can run this:
 
+SVN에 기록된 저자 이름 목록을 다음 명령으로 조회해 볼 수 있다.
+
 	$ svn log --xml | grep author | sort -u | perl -pe 's/.>(.?)<./$1 = /'
 
 That gives you the log output in XML format — you can look for the authors, create a unique list, and then strip out the XML. (Obviously this only works on a machine with `grep`, `sort`, and `perl` installed.) Then, redirect that output into your users.txt file so you can add the equivalent Git user data next to each entry.
 
+우선 앞에서부터 살펴보면 XML 형식의 SVN 로그를 출력하고, 그 안에서 author 정보를 찾아 중복된 것을 제거하고 XML 태그를 떼어버린다(물론 `grep`, `sort`, `perl` 명령이 동작하는 시스템에서 작동할 것이다). 이 결과를 가지고 `users.txt` 만들어 저자 정보를 연결한다.
+
 You can provide this file to `git svn` to help it map the author data more accurately. You can also tell `git svn` not to include the metadata that Subversion normally imports, by passing `--no-metadata` to the `clone` or `init` command. This makes your `import` command look like this:
+
+이렇게 만들어진 파일을 `git svn` 명령에 전달하면 보다 의미있는 저자 정보를 Git 저장소에 기록할 수 있다. 또한 `git svn`의 `clone`이나 `init` 명령에 `--no-metadata` 옵션을 사용하며 Subversion에서 일반적으로 가져오게 되는 메타데이터를 저장하지 않도록 설정할 수 있다. 해당 명령은 아래와 같은 모습일 것이다:
 
 	$ git-svn clone http://my-project.googlecode.com/svn/ \
 	      --authors-file=users.txt --no-metadata -s my_project
 
 Now you should have a nicer Subversion import in your `my_project` directory. Instead of commits that look like this
+
+`my_project` 디렉토리에 좀 더 나은 Subversion으로부터 가져오기 작업을 완료하였다. 바로 아래와 같은 모습이 아니라:
 
 	commit 37efa680e8473b615de980fa935944215428a35a
 	Author: schacon <schacon@4c93b258-373f-11de-be05-5f7a86268029>
@@ -494,7 +510,10 @@ Now you should have a nicer Subversion import in your `my_project` directory. In
 
 	    git-svn-id: https://my-project.googlecode.com/svn/trunk@94 4c93b258-373f-11de-
 	    be05-5f7a86268029
+
 they look like this:
+
+이와 같은 모습이 될 것이다:
 
 	commit 03a8785f44c8ea5cdb0e8834b7c8e6c469be2ff2
 	Author: Scott Chacon <schacon@geemail.com>
@@ -504,29 +523,45 @@ they look like this:
 
 Not only does the Author field look a lot better, but the `git-svn-id` is no longer there, either.
 
+저자 정보 항목이 훨씬 나아졌고 `git-svn-id` 항목 또한 기록되지 않았다.
+
 You need to do a bit of `post-import` cleanup. For one thing, you should clean up the weird references that `git svn` set up. First you’ll move the tags so they’re actual tags rather than strange remote branches, and then you’ll move the rest of the branches so they’re local.
 
+이제 약간의 `post-import` 정리 작업을 해야 한다. `git svn`이 설정해놓은 이상한 모양의 브랜치나 Tag들을 제거해 주어야 한다. 우선 태그가 Git에서도 사용해야 하는 의미있는 태그라면 원격 브랜치로 설정되어 있는 SVN 태그들을 실제 Git 태그로 옮겨와야 한다.
+
 To move the tags to be proper Git tags, run
+
+Git에 알맞는 태그로 옮기려면 다음과 같이 한다
 
 	$ cp -Rf .git/refs/remotes/tags/* .git/refs/tags/
 	$ rm -Rf .git/refs/remotes/tags
 
 This takes the references that were remote branches that started with `tag/` and makes them real (lightweight) tags.
 
+위 명령은 `tag/` 로 시작하는 원격 브랜치들을 실제 Git의 (Lightweight) Tag로 옮겨준다.
+
 Next, move the rest of the references under `refs/remotes` to be local branches:
+
+또한 원격 브랜치로 설정되어 있는 브랜치를 로컬로 옮긴다:
 
 	$ cp -Rf .git/refs/remotes/* .git/refs/heads/
 	$ rm -Rf .git/refs/remotes
 
 Now all the old branches are real Git branches and all the old tags are real Git tags. The last thing to do is add your new Git server as a remote and push to it. Here is an example of adding your server as a remote:
 
+이렇게 하고 나면 이전의 브랜치나 태그는 완전한 Git 브랜치나 태그로 되었을 것이다. 이제 마지막으로 남은 작업은 새 Git 서버를 리모트로 추가를 하고 지금까지의 작업을  Push 하는 것이다. 리모트로 새 서버를 추가하려면 아래와 같이 한다:
+
 	$ git remote add origin git@my-git-server:myrepository.git
 
 Because you want all your branches and tags to go up, you can now run this:
 
+모든 브랜치와 태그를 다 Push하기 위해서 아래와 같은 옵션으로 Push 한다:
+
 	$ git push origin --all
 
 All your branches and tags should be on your new Git server in a nice, clean import.
+
+이제 깔끔하게 가져오기 완료된 저장소와 모든 브랜치와 태그가 서버에도 똑같이 존재할 것이다.
 
 ### Perforce ###
 
