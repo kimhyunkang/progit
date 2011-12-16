@@ -567,14 +567,20 @@ All your branches and tags should be on your new Git server in a nice, clean imp
 
 The next system you’ll look at importing from is Perforce. A Perforce importer is also distributed with Git, but only in the `contrib` section of the source code — it isn’t available by default like `git svn`. To run it, you must get the Git source code, which you can download from git.kernel.org:
 
+다음으로 살펴볼 가져올 저장소 시스템은 Perforce이다. Preforce로부터 가져오는 도구는 Git과 같이 배포되지만 소스코드의 `contrib` 부분에만 있기 때문에 `git svn` 처럼 기본적으로 Git에 내장되어 배포되지는 않는다. Perforce 가져오기를 사용하려면 우선 Git 소스코드를 git.kernel.org 사이트로부터 다운로드 받아야 한다.
+
 	$ git clone git://git.kernel.org/pub/scm/git/git.git
 	$ cd git/contrib/fast-import
 
 In this `fast-import` directory, you should find an executable Python script named `git-p4`. You must have Python and the `p4` tool installed on your machine for this import to work. For example, you’ll import the Jam project from the Perforce Public Depot. To set up your client, you must export the P4PORT environment variable to point to the Perforce depot:
 
+이 `fast-import` 디렉토리에 `git-p4` 라는 파이썬 스크립트가 있어야 한다. 또한 파이썬과 `p4`가 설치되어 있어야 가져오기 스크립트가 동작한다. Jam 프로젝트를 Perforce Public Depot에서 가져오는 예제를 살펴보자. 우선 P4PORT 환경변수를 Perfoce Depot의 주소로 설정한다.
+
 	$ export P4PORT=public.perforce.com:1666
 
 Run the `git-p4 clone` command to import the Jam project from the Perforce server, supplying the depot and project path and the path into which you want to import the project:
+
+`git-p4 clone` 명령에 depot과 프로젝트 경로 그리고 프로젝트를 가져올 경로를 적어서 실행하면 Perforce 서버에서 Jam 프로젝트 가져온다.
 
 	$ git-p4 clone //public/jam/src@all /opt/p4import
 	Importing from //public/jam/src@all into /opt/p4import
@@ -583,6 +589,8 @@ Run the `git-p4 clone` command to import the Jam project from the Perforce serve
 	Importing revision 4409 (100%)
 
 If you go to the `/opt/p4import` directory and run `git log`, you can see your imported work:
+
+`/opt/p4import` 디렉토리로 이동하여 `git log` 명령을 실행해 보면 가져오기 된 프로젝트의 정보를 볼 수 있다:
 
 	$ git log -2
 	commit 1fd4ec126171790efd2db83548b85b1bbbc07dc2
@@ -606,6 +614,8 @@ If you go to the `/opt/p4import` directory and run `git log`, you can see your i
 
 You can see the `git-p4` identifier in each commit. It’s fine to keep that identifier there, in case you need to reference the Perforce change number later. However, if you’d like to remove the identifier, now is the time to do so — before you start doing work on the new repository. You can use `git filter-branch` to remove the identifier strings en masse:
 
+각 커밋에서 `git-p4` ID을 찾아볼 수 있다. 나중에 Perforce Change Number를 찾아보기 위해서 ID를 커밋에 저장한 채로 유지하는 것이 좋다. 하지만 ID를 지우고자 한다면 딱 지금이 그 작업을 할 수 있는 시점이다. `git filter-branch` 명령으로 한방에(en masse) 제거할 수 있다.
+
 	$ git filter-branch --msg-filter '
 	        sed -e "/^\[git-p4:/d"
 	'
@@ -613,6 +623,8 @@ You can see the `git-p4` identifier in each commit. It’s fine to keep that ide
 	Ref 'refs/heads/master' was rewritten
 
 If you run `git log`, you can see that all the SHA-1 checksums for the commits have changed, but the `git-p4` strings are no longer in the commit messages:
+
+`git log` 명령을 실행해보면 모든 SHA-1 체크섬이 변경된 것을 확인할 수 있으며 커밋 메시지에서 `git-p4` ID 문자도 제거된 것을 확인할 수 있다.
 
 	$ git log -2
 	commit 10a16d60cffca14d454a15c6164378f4082bc5b0
@@ -631,6 +643,8 @@ If you run `git log`, you can see that all the SHA-1 checksums for the commits h
 	    Update derived jamgram.c
 
 Your import is ready to push up to your new Git server.
+
+이제 가져온 저장소를 새 Git 서버에 올릴 준비가 되었다.
 
 ### A Custom Importer / 사용자 정의 가져오기 ###
 
