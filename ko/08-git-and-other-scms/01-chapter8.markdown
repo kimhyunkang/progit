@@ -650,7 +650,11 @@ Your import is ready to push up to your new Git server.
 
 If your system isn’t Subversion or Perforce, you should look for an importer online — quality importers are available for CVS, Clear Case, Visual Source Safe, even a directory of archives. If none of these tools works for you, you have a rarer tool, or you otherwise need a more custom importing process, you should use `git fast-import`. This command reads simple instructions from stdin to write specific Git data. It’s much easier to create Git objects this way than to run the raw Git commands or try to write the raw objects (see Chapter 9 for more information). This way, you can write an import script that reads the necessary information out of the system you’re importing from and prints straightforward instructions to stdout. You can then run this program and pipe its output through `git fast-import`.
 
+사용하는 버전관리 시스템이 Subversion이나 Perforce가 아니라면 인터넷에서 가져오기 도구를 찾아보아야 한다. CVS, Clear Case, Visual Source Safe, 심지어 그냥 디렉토리 구조로만 되어있는 소스를 가져오는 꽤 괜찮은 도구들이 있다. 기존 시스템이 널리 쓰이지 않는 도구라면 아무 도구도 찾지 못할 경우도 있다. 또한 가져오기 도구의 기능이 모자라서 더 기능을 추가해야하는 상황이라면 `git fast-import`를 사용할 수 있다. 이 명령은 stdin으로 Git에 데이터를 추가하는 간단한 절차 데이터를 입력받는다. 이 방식을 사용하면 저수준의 Git 명령이나 직접 Git 객체를 다루는 것보다 훨씬 더 쉽게 Git 객체를 만들 수 있다. 기존의 버전관리 시스템에서 필요한 정보를 읽어서 stdout으로 출력하여 `git fast-import` 명령을 통해 Git 시스템에 기록하는 사용자 정의 가져오기 스크립트를 작성할 수 있다.
+
 To quickly demonstrate, you’ll write a simple importer. Suppose you work in current, you back up your project by occasionally copying the directory into a time-stamped `back_YYYY_MM_DD` backup directory, and you want to import this into Git. Your directory structure looks like this:
+
+간단한 가져오기 스크립트를 작성해서 파악해보자. `back_YYYY_MM_DD`라는 디렉토리를 만들어 가끔 프로젝트를 백업하면서 일을 진행하는 상황을 가정해보자. Git으로 가져오기 스크립트를 작성할 시점에 디렉토리는 다음과 같은 모양일 것이다:
 
 	$ ls /opt/import_from
 	back_2009_01_02
@@ -661,9 +665,15 @@ To quickly demonstrate, you’ll write a simple importer. Suppose you work in cu
 
 In order to import a Git directory, you need to review how Git stores its data. As you may remember, Git is fundamentally a linked list of commit objects that point to a snapshot of content. All you have to do is tell `fast-import` what the content snapshots are, what commit data points to them, and the order they go in. Your strategy will be to go through the snapshots one at a time and create commits with the contents of each directory, linking each commit back to the previous one.
 
+Git 디렉토리로 가져오기를 할 때 우선 Git이 어떻게 데이터를 저장하는지 다시한번 생각해 볼 필요가 있다. 이미 알고있듯 Git은 기본적으로 어떤 프로젝트의 스냅샷을 가리키고 있는 커밋 객체가 연결된 리스트이다. 이제 해야할 일은 `fast-import` 명령에게 프로젝트의 스냅샷은 무엇인가, 커밋들은 어떻게 그것을 가리키는가, 그 순서가 어떻게 되는가를 말해주는 것이다(번역확인요).디렉토리 하나당 스냅샷을 만들고, 이 디렉토리의 스냅샷을 커밋 객체로 정의하며, 이 커밋이 바로 이전 커밋을 가리키도록 하는 전략을 선택할 수 있다.
+
 As you did in the "An Example Git Enforced Policy" section of Chapter 7, we’ll write this in Ruby, because it’s what I generally work with and it tends to be easy to read. You can write this example pretty easily in anything you’re familiar with — it just needs to print the appropriate information to stdout. And, if you are running on Windows, this means you'll need to take special care to not introduce carriage returns at the end your lines — git fast-import is very particular about just wanting line feeds (LF) not the carriage return line feeds (CRLF) that Windows uses.
 
+앞서 7장의 "An Example Git Enforced Policy" 절에서 해본 것 처럼 Ruby로 이 스크립트를 작성할 것이다. 보통 저자인 내가 Ruby를 많이 사용하기도 하고 작성한 스크립트가 읽기도 쉽기 때문이다. 여러분께 더 익숙한 방식을 사용할 수 있다. 단지 stdout으로 적절한 정보만 출력할 수 있으면 된다. 그리고 Windows 환경이라면 특별히 stdout에 출력할 때 캐리지 리턴 문자(\r)를 출력하지 않도록 주의해야 한다. `git fast-import` 명령은 Windows에서 사용되는 개행방식(CRLF)이 아닌 Line-feed 문자만을 사용하는 개행방식(LF)을 사용하기 때문이다.
+
 To begin, you’ll change into the target directory and identify every subdirectory, each of which is a snapshot that you want to import as a commit. You’ll change into each subdirectory and print the commands necessary to export it. Your basic main loop looks like this:
+
+우선 대상 디렉토리로 이동하여 각 하위 디렉토리를 살펴보는것 부터 시작을 한다. 각 하위 디렉토리는 하나의 스냅샷이 되고 하나의 커밋으로 될 것이다. 각 하위 디렉토리로 이동을 하여 가져오기에 필요한 정보를 출력한다. 일반적인 반복 흐름은 다음과 같다:
 
 	last_mark = nil
 
@@ -681,9 +691,13 @@ To begin, you’ll change into the target directory and identify every subdirect
 
 You run `print_export` inside each directory, which takes the manifest and mark of the previous snapshot and returns the manifest and mark of this one; that way, you can link them properly. "Mark" is the `fast-import` term for an identifier you give to a commit; as you create commits, you give each one a mark that you can use to link to it from other commits. So, the first thing to do in your `print_export` method is generate a mark from the directory name:
 
+이제 각 디렉토리에서 `print_export`를 호출하는데 인자로 디렉토리 정보와 바로 이전 스냅샷에 대한 정보를 전달할 수 있으며 이런 파라미터로 적절한 연결관계를 만들 수 있다. "Mark"라는 말은 `fast-import`에서 사용하는 구분자를 말하며 커밋을 하나 만들면 해당 Mark가 만들어지며, 이 Mark로 다른 커밋과 연결지을 수 있다. 그렇기에 `print_export`에서 우선 해야 할 일은 각 디렉토리 이름에서 Mark를 하나씩 생성하는 것이다:
+
 	mark = convert_dir_to_mark(dir)
 
 You’ll do this by creating an array of directories and using the index value as the mark, because a mark must be an integer. Your method looks like this:
+
+디렉토리 목록을 리스트로 만들어 각 리스트의 인덱스를 Mark로 사용할 수 있다. Mark는 정수 값을 사용해야 한다. 다음과 같이 작성한다:
 
 	$marks = []
 	def convert_dir_to_mark(dir)
@@ -695,9 +709,13 @@ You’ll do this by creating an array of directories and using the index value a
 
 Now that you have an integer representation of your commit, you need a date for the commit metadata. Because the date is expressed in the name of the directory, you’ll parse it out. The next line in your `print_export` file is
 
+각 커밋을 가리키는 정수 Mark를 사용할 수 있게 되었으며 이제 각 커밋에 대한 메타데이터의 날짜 정보를 만들 차례이다. 날짜 정보는 각 디렉토리의 이름을 분석해서 얻어올 수 있다. `print_export`의 다음 부분은 아래와 같다:
+
 	date = convert_dir_to_date(dir)
 
 where `convert_dir_to_date` is defined as
+
+`convert_dir_to_date`는 아래와 같이 정의한다:
 
 	def convert_dir_to_date(dir)
 	  if dir == 'current'
@@ -711,9 +729,13 @@ where `convert_dir_to_date` is defined as
 
 That returns an integer value for the date of each directory. The last piece of meta-information you need for each commit is the committer data, which you hardcode in a global variable:
 
+각 디렉토리의 시간 정보를 정수의 형태로 반환한다. 메타정보에 마지막으로 추가할 부분은 저자 정보이며, 이 정보는 전역 변수로 하나를 설정해서 사용하도록 한다:
+
 	$author = 'Scott Chacon <schacon@example.com>'
 
 Now you’re ready to begin printing out the commit data for your importer. The initial information states that you’re defining a commit object and what branch it’s on, followed by the mark you’ve generated, the committer information and commit message, and then the previous commit, if any. The code looks like this:
+
+사용자 정의 스크립트로 커밋 데이터를 출력하기 위한 준비를 마쳤다. 우선 출력하는 기본 정보에는 어떤 커밋 객체를 정의하고 있는지, 어떤 브랜치를 사용하는지, 어떤 Mark로부터 연결되었는지, 저자의 정보, 이전 커밋 정보 등을 포함한다(번역확인요). 그 스크립트는 다음과 같다:
 
 	# print the import information
 	puts 'commit refs/heads/master'
@@ -725,15 +747,21 @@ Now you’re ready to begin printing out the commit data for your importer. The 
 You hardcode the time zone (-0700) because doing so is easy. If you’re importing from another system, you must specify the time zone as an offset. 
 The commit message must be expressed in a special format:
 
+우선 시간대 정보는 간단히 하드코딩으로 기록하였다. 각자의 시간대에 맞춰서 적절히 시간대 오프셋을 설정해야 한다. 커밋 메시지는 특정 형식으로 기록해야 하는데 아래와 같다:
+
 	data (size)\n(contents)
 
 The format consists of the word data, the size of the data to be read, a newline, and finally the data. Because you need to use the same format to specify the file contents later, you create a helper method, `export_data`:
+
+이 특정 형식은 'data'문자, 읽을 문자의 길이, 개행문자, 그 문자 데이터로 구성된다. 동일한 이 형식을 반복적으로 사용하게 되므로 `export_data`라는 메소드를 만들어 놓을 필요가 있다:
 
 	def export_data(string)
 	  print "data #{string.size}\n#{string}"
 	end
 
 All that’s left is to specify the file contents for each snapshot. This is easy, because you have each one in a directory — you can print out the `deleteall` command followed by the contents of each file in the directory. Git will then record each snapshot appropriately:
+
+이제 남은 것은 각 스냅샷에 파일 데이터를 지정해주는 것이다. 각 디렉토리로 구분되어 있기 때문에 어렵지 않게 수행할 수 있다. 우선 ... 그렇게 하면 Git이 알맞게 각 스냅샷을 기록할 것이다.
 
 	puts 'deleteall'
 	Dir.glob("**/*").each do |file|
@@ -743,13 +771,19 @@ All that’s left is to specify the file contents for each snapshot. This is eas
 
 Note:	Because many systems think of their revisions as changes from one commit to another, fast-import can also take commands with each commit to specify which files have been added, removed, or modified and what the new contents are. You could calculate the differences between snapshots and provide only this data, but doing so is more complex — you may as well give Git all the data and let it figure it out. If this is better suited to your data, check the `fast-import` man page for details about how to provide your data in this manner.
 
+중요:	대다수의 버전관리 시스템에서 리비전을 커밋간의 변화로 생각하기 때문에 `fast-import` 또한 각 커밋에서 어떤 부분이 추가/삭제/변경 되었는지를 입력받을 수도 있다. 스냅샷 사이의 변화점만 찾아내서 이 데이터만 출력할 수 있는 상황이라면 가져오기 작업은 훨씬 어려워진다. Git에 넘길 모든 데이터 뿐 아니라 변화된 부분도 찾아내야 하기 때문이다. 이러한 방식을 사용해야만 한다면 어떻게 데이터를 전달할 지에 대해 `fast-import`의 Man Page를 참고해볼 필요가 있다.
+
 The format for listing the new file contents or specifying a modified file with the new contents is as follows:
+
+새 파일 또는 변경된 파일을 알려주기 위해서 다음과 같이 출력한다:
 
 	M 644 inline path/to/file
 	data (size)
 	(file contents)
 
 Here, 644 is the mode (if you have executable files, you need to detect and specify 755 instead), and inline says you’ll list the contents immediately after this line. Your `inline_data` method looks like this:
+
+644는 파일의 모드를 나타낸다(실행파일이라면 755로 지정해줘야 한다). inline은 지금 이 문자행 바로 다음에 이어서 파일의 내용을 출력한다는 것을 의미한다. `inline_data` 메소드는 다음과 같다:
 
 	def inline_data(file, code = 'M', mode = '644')
 	  content = File.read(file)
@@ -759,15 +793,23 @@ Here, 644 is the mode (if you have executable files, you need to detect and spec
 
 You reuse the `export_data` method you defined earlier, because it’s the same as the way you specified your commit message data. 
 
+같은 방식으로 데이터를 표현하기 때문에 앞서 만들어놓은 `export_data` 메소드를 다시 이용할 수 있다.
+
 The last thing you need to do is to return the current mark so it can be passed to the next iteration:
+
+마지막으로 해야할 부분은 다음 커밋 기록에 사용하기 위해 현재 Mark 정보를 반환하는 것이다:
 
 	return mark
 
 NOTE: If you are running on Windows you'll need to make sure that you add one extra step. As metioned before, Windows uses CRLF for new line characters while git fast-import expects only LF. To get around this problem and make git fast-import happy, you need to tell ruby to use LF instead of CRLF:
 
+NOTE: Windows 환경에서 실행할 때는 추가작업이 하나 필요하다. 앞서 이야기한 부분인데 Windows는 CRLF를 사용하기 때문에 `git fast-import`가 사용하는 LF와 맞지 않는다. 다음 이어지는 코드를 사용하여 Ruby가 LF 대신 CRLF를 사용하도록 강제할 수 있다.
+
 	$stdout.binmode
 
 That’s it. If you run this script, you’ll get content that looks something like this:
+
+모든게 끝났다. 스크립트를 실행하면 다음과 같은 출력 내용을 볼 수 있다:
 
 	$ ruby import.rb /opt/import_from 
 	commit refs/heads/master
@@ -793,6 +835,8 @@ That’s it. If you run this script, you’ll get content that looks something l
 	(...)
 
 To run the importer, pipe this output through `git fast-import` while in the Git directory you want to import into. You can create a new directory and then run `git init` in it for a starting point, and then run your script:
+
+가져오기 스크립트로 실행하기 위해 새로 Git프로젝트로 저장할 위치에서 `git fast-import` 명령에 출력을 파이프라인으로 연결한다. 새로운 디렉토리를 만들고 `git init` 명령을 실행하면 가져오기 스크립트를 실행할 준비가 된 것이다.
 
 	$ git init
 	Initialized empty Git repository in /opt/import_to/.git/
@@ -823,6 +867,8 @@ To run the importer, pipe this output through `git fast-import` while in the Git
 
 As you can see, when it completes successfully, it gives you a bunch of statistics about what it accomplished. In this case, you imported 18 objects total for 5 commits into 1 branch. Now, you can run `git log` to see your new history:
 
+가져오기에 성공하면 Git은 가져오기한 내용에 대하여 위와 같은 통계를 출력한다. 이 예제에서는 가져오기 작업에서 1개의 브랜치, 5개의 커밋, 18개의 커밋 객체를 생성했다. 이제 `git log` 명령으로 Git 히스토리를 조회해 볼 수 있다.
+
 	$ git log -2
 	commit 10bfe7d22ce15ee25b60a824c8982157ca593d41
 	Author: Scott Chacon <schacon@example.com>
@@ -838,6 +884,8 @@ As you can see, when it completes successfully, it gives you a bunch of statisti
 
 There you go — a nice, clean Git repository. It’s important to note that nothing is checked out — you don’t have any files in your working directory at first. To get them, you must reset your branch to where `master` is now:
 
+이 시점에서 중요사항은 아무것도 Checkout 하지 않은 상태기 때문에 최초에는 작업 디렉토리에 아무 파일도 존재하지 않는다. 파일을 checkout하기 위해서 `master` 브랜치를 reset 해야 할 시점이다:
+
 	$ ls
 	$ git reset --hard master
 	HEAD is now at 10bfe7d imported from current
@@ -846,6 +894,10 @@ There you go — a nice, clean Git repository. It’s important to note that not
 
 You can do a lot more with the `fast-import` tool — handle different modes, binary data, multiple branches and merging, tags, progress indicators, and more. A number of examples of more complex scenarios are available in the `contrib/fast-import` directory of the Git source code; one of the better ones is the `git-p4` script I just covered.
 
+`fast-import` 명령으로 훨씬 더 많은 일을 할 수 있다. 모드를 설정하거나, 바이너리 데이터를 다루고, 여러 브랜치와 Merge 기능, 태그, Process Indicator, 기타 등등 여러 기능을 더 이용할 수 있다. Git 소스코드의 `contrib/fast-import` 디렉토리에 훨씬 복잡한 상황에 대한 많은 예제들이 있다. 그 중 앞서 다룬 `git-p4` 스크립트가 좋은 예제이다.
+
 ## Summary / 요약 ##
 
 You should feel comfortable using Git with Subversion or importing nearly any existing repository into a new Git one without losing data. The next chapter will cover the raw internals of Git so you can craft every single byte, if need be.
+
+Subversion과 함께 Git을 사용하는 방법, 이미 구축된 버전관리 시스템에서 새로 Git 시스템으로 이전하는 방법에 대해서 충분히 알게되었을 것이다. 다음장에서는 Git의 내부 시스템을 다룰 것이며 존재하기 위해 필요한 바이트 하나하나까지 다루게 될 것이다(번역확인요).
