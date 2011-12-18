@@ -1,4 +1,4 @@
-# Git Internals #
+# Git Internals / Git의 내부구조 #
 
 You may have skipped to this chapter from a previous chapter, or you may have gotten here after reading the rest of the book — in either case, this is where you’ll go over the inner workings and implementation of Git. I found that learning this information was fundamentally important to understanding how useful and powerful Git is, but others have argued to me that it can be confusing and unnecessarily complex for beginners. Thus, I’ve made this discussion the last chapter in the book so you could read it early or later in your learning process. I leave it up to you to decide.
 
@@ -8,7 +8,7 @@ In the early days of Git (mostly pre 1.5), the user interface was much more comp
 
 The content-addressable filesystem layer is amazingly cool, so I’ll cover that first in this chapter; then, you’ll learn about the transport mechanisms and the repository maintenance tasks that you may eventually have to deal with.
 
-## Plumbing and Porcelain ##
+## Plumbing and Porcelain / 뼈대와 몸체 ##
 
 This book covers how to use Git with 30 or so verbs such as `checkout`, `branch`, `remote`, and so on. But because Git was initially a toolkit for a VCS rather than a full user-friendly VCS, it has a bunch of verbs that do low-level work and were designed to be chained together UNIX style or called from scripts. These commands are generally referred to as "plumbing" commands, and the more user-friendly commands are called "porcelain" commands.
 
@@ -31,7 +31,7 @@ You may see some other files in there, but this is a fresh `git init` repository
 
 This leaves four important entries: the `HEAD` and `index` files and the `objects` and `refs` directories. These are the core parts of Git. The `objects` directory stores all the content for your database, the `refs` directory stores pointers into commit objects in that data (branches), the `HEAD` file points to the branch you currently have checked out, and the `index` file is where Git stores your staging area information. You’ll now look at each of these sections in detail to see how Git operates.
 
-## Git Objects ##
+## Git Objects / Git 객체 ##
 
 Git is a content-addressable filesystem. Great. What does that mean?
 It means that at the core of Git is a simple key-value data store. You can insert any kind of content into it, and it will give you back a key that you can use to retrieve the content again at any time. To demonstrate, you can use the plumbing command `hash-object`, which takes some data, stores it in your `.git` directory, and gives you back the key the data is stored as. First, you initialize a new Git repository and verify that there is nothing in the `objects` directory:
@@ -100,7 +100,7 @@ But remembering the SHA-1 key for each version of your file isn’t practical; p
 	$ git cat-file -t 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
 	blob
 
-### Tree Objects ###
+### Tree Objects / 트리 객체 ###
 
 The next type you’ll look at is the tree object, which solves the problem of storing the filename and also allows you to store a group of files together. Git stores content in a manner similar to a UNIX filesystem, but a bit simplified. All the content is stored as tree and blob objects, with trees corresponding to UNIX directory entries and blobs corresponding more or less to inodes or file contents. A single tree object contains one or more tree entries, each of which contains a SHA-1 pointer to a blob or subtree with its associated mode, type, and filename. For example, the most recent tree in the simplegit project may look something like this:
 
@@ -167,7 +167,7 @@ If you created a working directory from the new tree you just wrote, you would g
 Insert 18333fig0902.png 
 Figure 9-2. The content structure of your current Git data.
 
-### Commit Objects ###
+### Commit Objects 커밋 객체 ###
 
 You have three trees that specify the different snapshots of your project that you want to track, but the earlier problem remains: you must remember all three SHA-1 values in order to recall the snapshots. You also don’t have any information about who saved the snapshots, when they were saved, or why they were saved. This is the basic information that the commit object stores for you.
 
@@ -244,7 +244,7 @@ If you follow all the internal pointers, you get an object graph something like 
 Insert 18333fig0903.png 
 Figure 9-3. All the objects in your Git directory.
 
-### Object Storage ###
+### Object Storage / 객체 저장소 ###
 
 I mentioned earlier that a header is stored with the content. Let’s take a minute to look at how Git stores its objects. You’ll see how to store a blob object — in this case, the string "what is up, doc?" — interactively in the Ruby scripting language. You can start up interactive Ruby mode with the `irb` command:
 
@@ -286,7 +286,7 @@ Finally, you’ll write your zlib-deflated content to an object on disk. You’l
 
 That’s it — you’ve created a valid Git blob object. All Git objects are stored the same way, just with different types — instead of the string blob, the header will begin with commit or tree. Also, although the blob content can be nearly anything, the commit and tree content are very specifically formatted.
 
-## Git References ##
+## Git References / Git 레퍼런스 ##
 
 You can run something like `git log 1a410e` to look through your whole history, but you still have to remember that `1a410e` is the last commit in order to walk that history to find all those objects. You need a file in which you can store the SHA-1 value under a simple name so you can use that pointer rather than the raw SHA-1 value.
 
@@ -331,7 +331,7 @@ Figure 9-4. Git directory objects with branch head references included.
 
 When you run commands like `git branch (branchname)`, Git basically runs that `update-ref` command to add the SHA-1 of the last commit of the branch you’re on into whatever new reference you want to create.
 
-### The HEAD ###
+### The HEAD / HEAD ###
 
 The question now is, when you run `git branch (branchname)`, how does Git know the SHA-1 of the last commit? The answer is the HEAD file. The HEAD file is a symbolic reference to the branch you’re currently on. By symbolic reference, I mean that unlike a normal reference, it doesn’t generally contain a SHA-1 value but rather a pointer to another reference. If you look at the file, you’ll normally see something like this:
 
@@ -361,7 +361,7 @@ You can’t set a symbolic reference outside of the refs style:
 	$ git symbolic-ref HEAD test
 	fatal: Refusing to point HEAD outside of refs/
 
-### Tags ###
+### Tags / 태그 ###
 
 You’ve just gone over Git’s three main object types, but there is a fourth. The tag object is very much like a commit object — it contains a tagger, a date, a message, and a pointer. The main difference is that a tag object points to a commit rather than a tree. It’s like a branch reference, but it never moves — it always points to the same commit but gives it a friendlier name.
 
@@ -394,7 +394,7 @@ Notice that the object entry points to the commit SHA-1 value that you tagged. A
 
 in the Git source code repository. The Linux kernel repository also has a non-commit-pointing tag object — the first tag created points to the initial tree of the import of the source code.
 
-### Remotes ###
+### Remotes / 리모트(원격저장소) ###
 
 The third type of reference that you’ll see is a remote reference. If you add a remote and push to it, Git stores the value you last pushed to that remote for each branch in the `refs/remotes` directory. For instance, you can add a remote called `origin` and push your `master` branch to it:
 
@@ -414,7 +414,7 @@ Then, you can see what the `master` branch on the `origin` remote was the last t
 
 Remote references differ from branches (`refs/heads` references) mainly in that they can’t be checked out. Git moves them around as bookmarks to the last known state of where those branches were on those servers.
 
-## Packfiles ##
+## Packfiles / Pack 파일 ##
 
 Let’s go back to the objects database for your test Git repository. At this point, you have 11 objects — 4 blobs, 3 trees, 3 commits, and 1 tag:
 
@@ -526,7 +526,7 @@ Here, the `9bc1d` blob, which if you remember was the first version of your repo
 
 The really nice thing about this is that it can be repacked at any time. Git will occasionally repack your database automatically, always trying to save more space. You can also manually repack at any time by running `git gc` by hand.
 
-## The Refspec ##
+## The Refspec / Refspec ##
 
 Throughout this book, you’ve used simple mappings from remote branches to local references; but they can be more complex.
 Suppose you add a remote like this:
@@ -587,7 +587,7 @@ However, you can use namespacing to accomplish something like that. If you have 
 
 If you have a complex workflow process that has a QA team pushing branches, developers pushing branches, and integration teams pushing and collaborating on remote branches, you can namespace them easily this way.
 
-### Pushing Refspecs ###
+### Pushing Refspecs / Refspec Push하기 ###
 
 It’s nice that you can fetch namespaced references that way, but how does the QA team get their branches into a `qa/` namespace in the first place? You accomplish that by using refspecs to push.
 
@@ -604,7 +604,7 @@ If they want Git to do that automatically each time they run `git push origin`, 
 
 Again, this will cause a `git push origin` to push the local `master` branch to the remote `qa/master` branch by default.
 
-### Deleting References ###
+### Deleting References / 레퍼런스 삭제하기 ###
 
 You can also use the refspec to delete references from the remote server by running something like this:
 
@@ -612,11 +612,11 @@ You can also use the refspec to delete references from the remote server by runn
 
 Because the refspec is `<src>:<dst>`, by leaving off the `<src>` part, this basically says to make the topic branch on the remote nothing, which deletes it. 
 
-## Transfer Protocols ##
+## Transfer Protocols / 데이터 전송 프로토콜 ##
 
 Git can transfer data between two repositories in two major ways: over HTTP and via the so-called smart protocols used in the `file://`, `ssh://`, and `git://` transports. This section will quickly cover how these two main protocols operate.
 
-### The Dumb Protocol ###
+### The Dumb Protocol / 단순한 프로토콜 ###
 
 Git transport over HTTP is often referred to as the dumb protocol because it requires no Git-specific code on the server side during the transport process. The fetch process is a series of GET requests, where the client can assume the layout of the Git repository on the server. Let’s follow the `http-fetch` process for the simplegit library:
 
@@ -695,11 +695,11 @@ The entire output of this process looks like this:
 	walk 085bb3bcb608e1e8451d4b2432f8ecbe6306e7e7
 	walk a11bef06a3f659402fe7563abf99ad00de2209e6
 
-### The Smart Protocol ###
+### The Smart Protocol / 정교한 프로토콜 ###
 
 The HTTP method is simple but a bit inefficient. Using smart protocols is a more common method of transferring data. These protocols have a process on the remote end that is intelligent about Git — it can read local data and figure out what the client has or needs and generate custom data for it. There are two sets of processes for transferring data: a pair for uploading data and a pair for downloading data.
 
-#### Uploading Data ####
+#### Uploading Data / 데이터 업로드 ####
 
 To upload data to a remote process, Git uses the `send-pack` and `receive-pack` processes. The `send-pack` process runs on the client and connects to a `receive-pack` process on the remote side.
 
@@ -726,7 +726,7 @@ Git sends a line for each reference you’re updating with the old SHA, the new 
 
 	000Aunpack ok
 
-#### Downloading Data ####
+#### Downloading Data / 데이터 다운로드 ####
 
 When you download data, the `fetch-pack` and `upload-pack` processes are involved. The client initiates a `fetch-pack` process that connects to an `upload-pack` process on the remote side to negotiate what data will be transferred down.
 
@@ -759,11 +759,11 @@ At this point, the `fetch-pack` process looks at what objects it has and respond
 
 That is a very basic case of the transfer protocols. In more complex cases, the client supports `multi_ack` or `side-band` capabilities; but this example shows you the basic back and forth used by the smart protocol processes.
 
-## Maintenance and Data Recovery ##
+## Maintenance and Data Recovery / 운영 및 데이터 복구 ##
 
 Occasionally, you may have to do some cleanup — make a repository more compact, clean up an imported repository, or recover lost work. This section will cover some of these scenarios.
 
-### Maintenance ###
+### Maintenance / 운영 ###
 
 Occasionally, Git automatically runs a command called "auto gc". Most of the time, this command does nothing. However, if there are too many loose objects (objects not in a packfile) or too many packfiles, Git launches a full-fledged `git gc` command. The `gc` stands for garbage collect, and the command does a number of things: it gathers up all the loose objects and places them in packfiles, it consolidates packfiles into one big packfile, and it removes objects that aren’t reachable from any commit and are a few months old.
 
@@ -795,7 +795,7 @@ If you update a reference, Git doesn’t edit this file but instead writes a new
 
 Notice the last line of the file, which begins with a `^`. This means the tag directly above is an annotated tag and that line is the commit that the annotated tag points to.
 
-### Data Recovery ###
+### Data Recovery / 데이터 복구 ###
 
 At some point in your Git journey, you may accidentally lose a commit. Generally, this happens because you force-delete a branch that had work on it, and it turns out you wanted the branch after all; or you hard-reset a branch, thus abandoning commits that you wanted something from. Assuming this happens, how can you get your commits back?
 
@@ -870,7 +870,7 @@ Because the reflog data is kept in the `.git/logs/` directory, you effectively h
 
 In this case, you can see your missing commit after the dangling commit. You can recover it the same way, by adding a branch that points to that SHA.
 
-### Removing Objects ###
+### Removing Objects / 객체 삭제 ###
 
 There are a lot of great things about Git, but one feature that can cause issues is the fact that a `git clone` downloads the entire history of the project, including every version of every file. This is fine if the whole thing is source code, because Git is highly optimized to compress that data efficiently. However, if someone at any point in the history of your project added a single huge file, every clone for all time will be forced to download that large file, even if it was removed from the project in the very next commit. Because it’s reachable from the history, it will always be there.
 
@@ -970,7 +970,7 @@ Let’s see how much space you saved.
 
 The packed repository size is down to 7K, which is much better than 2MB. You can see from the size value that the big object is still in your loose objects, so it’s not gone; but it won’t be transferred on a push or subsequent clone, which is what is important. If you really wanted to, you could remove the object completely by running `git prune --expire`.
 
-## Summary ##
+## Summary / 요약 ##
 
 You should have a pretty good understanding of what Git does in the background and, to some degree, how it’s implemented. This chapter has covered a number of plumbing commands — commands that are lower level and simpler than the porcelain commands you’ve learned about in the rest of the book. Understanding how Git works at a lower level should make it easier to understand why it’s doing what it’s doing and also to write your own tools and helping scripts to make your specific workflow work for you.
 
