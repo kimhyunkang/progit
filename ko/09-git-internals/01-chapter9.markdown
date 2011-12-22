@@ -2,11 +2,19 @@
 
 You may have skipped to this chapter from a previous chapter, or you may have gotten here after reading the rest of the book — in either case, this is where you’ll go over the inner workings and implementation of Git. I found that learning this information was fundamentally important to understanding how useful and powerful Git is, but others have argued to me that it can be confusing and unnecessarily complex for beginners. Thus, I’ve made this discussion the last chapter in the book so you could read it early or later in your learning process. I leave it up to you to decide.
 
+앞의 여러 장을 건너뛰고 왔든 다 읽고 왔든 간에 우리가 대면하고 있는 9장은 Git의 내부 구조와 실제로 어떻게 구현되어 있는가를 살펴본다. Git이 얼마나 쓸만한지 그리고 강력한 기능을 갖고 있는지 제대로 이해하려면 이 9장의 내용을 배워보는 것이 매우 중요다고 생각한다. 다른이들은 초보자가 이해하기에 9장은 이해하는데 더 혼란스럽고 불필요하다고 이야기하기도 한다. 그래서 9장의 내용은 책의 가장 마지막 장에 두어 배우는 과정에서 먼저 볼지 나중에 볼지 독자가 선택할 수 있도록 하였다.
+
 Now that you’re here, let’s get started. First, if it isn’t yet clear, Git is fundamentally a content-addressable filesystem with a VCS user interface written on top of it. You’ll learn more about what this means in a bit.
+
+자 이제 본격적으로! 우선 Git은 기본적으로 VCS 사용자 인터페이스를 위에 두고 있는 Content-addressable 파일 시스템이라고 정의한다. 뭔가 깔끔한 정의는 아니지만 이 말이 무슨 의미인가는 차차 알아가도록 하자.
 
 In the early days of Git (mostly pre 1.5), the user interface was much more complex because it emphasized this filesystem rather than a polished VCS. In the last few years, the UI has been refined until it’s as clean and easy to use as any system out there; but often, the stereotype lingers about the early Git UI that was complex and difficult to learn.
 
+Git의 초기 시절에는 (1.5 이전 버전) 훨씬 복잡한 사용자 인터페이스를 갖고 있었다. 틀이 잡힌 VCS가 아닌 파일 시스템을 강조한 점 때문이었다. 최근 몇년간 사용자 인터페이스는 여타 버전관리 시스템 만큼 깔끔한 사용자 인터페이스로 만들기 위해 다듬어져 왔다. 하지만 초기 시절의 배우기 어려운 인터페이스에 대한 선입견은 좀처럼 사라지지 않았다.
+
 The content-addressable filesystem layer is amazingly cool, so I’ll cover that first in this chapter; then, you’ll learn about the transport mechanisms and the repository maintenance tasks that you may eventually have to deal with.
+
+Content-addressable 파일 시스템 계층은 정말 대단한 것이기 때문에 이번 장에서 가장 먼저 다루도록 한다. 그 이후에 Transport 원리와 가장 중심이 되는 저장소 관리 작업에 대한 내용을 다루도록 한다.
 
 ## Plumbing and Porcelain / 뼈대와 몸체 ##
 
