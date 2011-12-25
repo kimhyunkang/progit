@@ -16,13 +16,19 @@ The content-addressable filesystem layer is amazingly cool, so I’ll cover that
 
 Content-addressable 파일 시스템 계층은 정말 대단한 것이기 때문에 이번 장에서 가장 먼저 다루도록 한다. 그 이후에 Transport 원리와 가장 중심이 되는 저장소 관리 작업에 대한 내용을 다루도록 한다.
 
-## Plumbing and Porcelain / 뼈대와 몸체 ##
+## Plumbing and Porcelain / Plumbing 명령과 Porcelain 명령 ##
 
 This book covers how to use Git with 30 or so verbs such as `checkout`, `branch`, `remote`, and so on. But because Git was initially a toolkit for a VCS rather than a full user-friendly VCS, it has a bunch of verbs that do low-level work and were designed to be chained together UNIX style or called from scripts. These commands are generally referred to as "plumbing" commands, and the more user-friendly commands are called "porcelain" commands.
 
+이 책에서 Git을 사용하기 위해 `checkout`, `branch`, `remote`와 같은 30여가지의 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷(도구모음)이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 이 명령어들은 Unix 스타일로 함께 연결되어 실행하거나 스크립트에서 호출될 수 있도록 디자인되었다. 이러한 저수준의 명령어들은 "Plumbing" 명령어라고 부르며, 좀 더 사용자 친화적인 명령어들은 "Porcelain" 명령어라고 부른다.
+
 The book’s first eight chapters deal almost exclusively with porcelain commands. But in this chapter, you’ll be dealing mostly with the lower-level plumbing commands, because they give you access to the inner workings of Git and help demonstrate how and why Git does what it does. These commands aren’t meant to be used manually on the command line, but rather to be used as building blocks for new tools and custom scripts.
 
+이 책 앞의 8개의 장은 Porcelain 명령만을 사용한다. 하지만 이번장에서는 저수준의 Plumbing 명령을 주로 사용하게 될 것이다. 이 명령을 통해 Git의 내부 작업에 접근할 수 있으며 실제로 어떻게 또는 왜 그렇게 작동되는지 살펴볼 수 있기 때문이다. Plumbing 명령을 직접 커맨드라인에서 실행하기보다는 새로운 도구를 만들거나 사용자만의 스크립트를 작성할 때 끼워넣어 쓸 수 있다.
+
 When you run `git init` in a new or existing directory, Git creates the `.git` directory, which is where almost everything that Git stores and manipulates is located. If you want to back up or clone your repository, copying this single directory elsewhere gives you nearly everything you need. This entire chapter basically deals with the stuff in this directory. Here’s what it looks like:
+
+새로 만든 디렉토리나 이미 여러 파일이 존재하고 있는 디렉토리에서 `git init` 명령을 실행하면 Git은 대부분의 Git 자료을 저장하고 관리하게 될 `.git` 디렉토리를 만든다. 저장소를 백업하거나 복사해놓으려면 이 디렉토리를 복사해 놓는 것이 거의 전부이다. 이 장의 대부분은 기본적으로 이 디렉토리 안의 내용들을 다루고 있다. 디렉토리는 다음과 같은 구조이다:
 
 	$ ls 
 	HEAD
@@ -37,7 +43,11 @@ When you run `git init` in a new or existing directory, Git creates the `.git` d
 
 You may see some other files in there, but this is a fresh `git init` repository — it’s what you see by default. The `branches` directory isn’t used by newer Git versions, and the `description` file is only used by the GitWeb program, so don’t worry about those. The `config` file contains your project-specific configuration options, and the `info` directory keeps a global exclude file for ignored patterns that you don’t want to track in a .gitignore file. The `hooks` directory contains your client- or server-side hook scripts, which are discussed in detail in Chapter 6.
 
+파일이 몇개 있어 빈 디렉토리는 아니지만 실제로 `git init`을 하고 난 직후의 기본적인 새 저장소의 모습이다. `branches` 디렉토리는 최근 Git 버전에서는 사용하지 않는다. `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용한다. `config` 파일은 프로젝트에 관련된 설정 옵션을 담고 있으며, `info` 디렉토리는 .gitignore 파일에 기록하지 않고 프로젝트 전체에 적용되는 포함하지 않을 파일이나 무시할 파일 목록을 설정한다. `hook` 디렉토리는 클라이언트나 서버측의 훅 스크립트를 담고 있으며 관련 내용은 6장에서 다루었다.
+
 This leaves four important entries: the `HEAD` and `index` files and the `objects` and `refs` directories. These are the core parts of Git. The `objects` directory stores all the content for your database, the `refs` directory stores pointers into commit objects in that data (branches), the `HEAD` file points to the branch you currently have checked out, and the `index` file is where Git stores your staging area information. You’ll now look at each of these sections in detail to see how Git operates.
+
+이제 네 가지 항목이 남았는데 모두 중요한 항목들이다. `HEAD`와 `index`파일 `objects`와 `refs` 디렉토리가 남았다. 이 네 항목이 Git의 중심을 이룬다. `objects` 디렉토리는 데이터베이스로서 모든 컨텐트 데이터를 저장하고 있다. `refs` 디렉토리는 커밋 객체의 포인터(Branch)를 저장하고 있다. `HEAD` 파일은 현재 Checkout한 브랜치를 가리키고 있으며 `index` 파일은 Stage 영역의 정보를 저장하는 곳이다. Git이 어떻게 동작하는지 알아보기 위해 이 네가지 항목을 자세히 살펴보도록 한다.
 
 ## Git Objects / Git 객체 ##
 
