@@ -140,9 +140,11 @@ But remembering the SHA-1 key for each version of your file isn’t practical; p
 	$ git cat-file -t 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
 	blob
 
-### Tree Objects / 트리 객체 ###
+### Tree Objects / Tree 객체 ###
 
 The next type you’ll look at is the tree object, which solves the problem of storing the filename and also allows you to store a group of files together. Git stores content in a manner similar to a UNIX filesystem, but a bit simplified. All the content is stored as tree and blob objects, with trees corresponding to UNIX directory entries and blobs corresponding more or less to inodes or file contents. A single tree object contains one or more tree entries, each of which contains a SHA-1 pointer to a blob or subtree with its associated mode, type, and filename. For example, the most recent tree in the simplegit project may look something like this:
+
+다음으로 살펴볼 것은 Tree 객체이다. 이 Tree 객체는 앞서 파일이름을 저장하지 못했던 문제를 해결하며 여러 파일들을 함께 저장하는 방법도 제공한다. Git은 컨텐트를 유닉스 파일 시스템과 비슷한 방식으로 저장하지만 좀 더 단순하다. 모든 컨텐트는 Tree나 Blob 객체로 저장이 되며 Tree는 유닉스의 디렉토리 항목, Blob은 Inode나 파일 컨텐트에 대응된다. 하나의 Tree 객체는 하나 이상의 Tree 항목을 포함하고 있으며 Tree 항목의 각 항목은 Blob 객체나 Subtree(하위 Tree)의 SHA-1 포인터를 갖고 있으며 추가적으로 파일 모드, 객체 타입, 파일이름을 갖고 있다. 예를 들어 최신 simplegit 프로젝트의 모습을 살펴보면 다음과 같다:
 
 	$ git cat-file -p master^{tree}
 	100644 blob a906cb2a4a904a152e80877d4088654daad0c859      README
@@ -151,22 +153,32 @@ The next type you’ll look at is the tree object, which solves the problem of s
 
 The `master^{tree}` syntax specifies the tree object that is pointed to by the last commit on your `master` branch. Notice that the `lib` subdirectory isn’t a blob but a pointer to another tree:
 
+`master^{tree}` 구문은 `master` 브랜치에서 마지막 커밋이 가리키고 있는 Tree 객체를 지정하고 있다. `lib` 디렉토리는 Blob 형식이 아니기 때문에 다른 Tree 객체를 가리키고 있다는 점을 주목해보자.
+
 	$ git cat-file -p 99f1a6d12cb4b6f19c8655fca46c3ecf317074e0
 	100644 blob 47c6340d6459e05787f644c2447d2595f5d3a54b      simplegit.rb
 
 Conceptually, the data that Git is storing is something like Figure 9-1.
 
+Git이 데이터를 저장하고 있는 모습은 대강 그림 9-1과 같다.
+
 Insert 18333fig0901.png 
-Figure 9-1. Simple version of the Git data model.
+Figure 9-1. 단순화한 Git 데이터 모델.
 
 You can create your own tree. Git normally creates a tree by taking the state of your staging area or index and writing a tree object from it. So, to create a tree object, you first have to set up an index by staging some files. To create an index with a single entry — the first version of your text.txt file — you can use the plumbing command `update-index`. You use this command to artificially add the earlier version of the test.txt file to a new staging area. You must pass it the `--add` option because the file doesn’t yet exist in your staging area (you don’t even have a staging area set up yet) and `--cacheinfo` because the file you’re adding isn’t in your directory but is in your database. Then, you specify the mode, SHA-1, and filename:
+
+사용자 나름의 Tree 객체를 만들수도 있다. Git은 일반적으로 Stage 영역의 상태나 Index 기반으로 Tree 객체를 만들고 기록하고 한다. 그렇기 때문에 Tree 객체를 만들기 위해서는 Stage 영역에 파일을 추가하여 Index를 생성하는 작업을 먼저 해야 한다. 우선 첫 번째 버전의 test.txt 파일 하나의 항목을 가지는 Index를 만들기 위해 Plumbing 명령 `update-index`를 사용한다. 새 Stage 영역에 인위적으로 앞서 저장한 버전의 test.txt 파일을 추가한다. 아직 Stage 영역에 파일이 추가되어 있지 않기 때문에 `--add` 옵션을 반드시 추가해주어야 한다 (사실 아직 Stage 영역도 설정되어 있지 않은 상태이다). 또한 저장소 데이터베이스에는 존재하지만 디렉토리에는 사실 존재하지 않는 파일이기 땜ㄴ에 `--cacheinfo` 옵션을 사용한다. 그리고 파일 모드, SHA-1 해시, 파일 이름을 지정해준다:
 
 	$ git update-index --add --cacheinfo 100644 \
 	  83baae61804e65cc73a7201a7252750c76066a30 test.txt
 
 In this case, you’re specifying a mode of `100644`, which means it’s a normal file. Other options are `100755`, which means it’s an executable file; and `120000`, which specifies a symbolic link. The mode is taken from normal UNIX modes but is much less flexible — these three modes are the only ones that are valid for files (blobs) in Git (although other modes are used for directories and submodules).
 
+위의 상황에서 파일 모드는 일반적일 파일을 나타내는 `100644`로 지정했다. 실행파일이라면 `100755`로 지정할 수 있고, 심볼릭 링크라면 `120000`으로 지정할 수 있다. 이런 파일 모드는 일반적인 유닉스 모드에서 가져오긴 하지만 모드의 모든 기능을 사용하지는 않는다. Git에서 파일에 대한 모드로서 방금 다룬 세 가지 모드만 사용한다(디렉토리나 서브모듈은 다른 모드를 사용한다).
+
 Now, you can use the `write-tree` command to write the staging area out to a tree object. No `-w` option is needed — calling `write-tree` automatically creates a tree object from the state of the index if that tree doesn’t yet exist:
+
+이제 `write-tree` 명령으로 Stage 영역을 Tree 객체로 기록할 수 있는 상황이 되었다. `write-tree` 명령은 Tree 객체가 없는 경우 자동으로 생성하므로 `-w` 옵션이 필요하지는 않다:
 
 	$ git write-tree
 	d8329fc1cc938780ffdd9f94e0d364e0ea74f579
@@ -175,16 +187,24 @@ Now, you can use the `write-tree` command to write the staging area out to a tre
 
 You can also verify that this is a tree object:
 
+Tree 객체라는 것을 다음 명령으로 확인해볼 수도 있다:
+
 	$ git cat-file -t d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	tree
 
 You’ll now create a new tree with the second version of test.txt and a new file as well:
+
+test.txt 파일의 두 번째 버전에 대한 새 Tree 객체를 만들어보자:
 
 	$ echo 'new file' > new.txt
 	$ git update-index test.txt 
 	$ git update-index --add new.txt 
 
 Your staging area now has the new version of test.txt as well as the new file new.txt. Write out that tree (recording the state of the staging area or index to a tree object) and see what it looks like:
+
+새 파일인 new.txt 파일 외에도 test.txt 파일의 새 버전까지 Stage 영역에 추가되었다. 현재 Stage 영역의 Index와 그 내용을 새로운 Tree 객체로 기록하고 어떤 모습인지 확인해보자:
+
+(번역 확인: 앞서 write-tree에서 -w 옵션이 불필요 하다는 말이 `hash-object -w` 로 기록하지 않아도 새로 blob 데이터를 만든다는 이야기인지, Tree 객체의 기록에 대한 이야기인지 확인이 필요하다)
 
 	$ git write-tree
 	0155eb4229851634a0f03eb265b69f5a2d56f341
@@ -193,6 +213,8 @@ Your staging area now has the new version of test.txt as well as the new file ne
 	100644 blob 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a      test.txt
 
 Notice that this tree has both file entries and also that the test.txt SHA is the "version 2" SHA from earlier (`1f7a7a`). Just for fun, you’ll add the first tree as a subdirectory into this one. You can read trees into your staging area by calling `read-tree`. In this case, you can read an existing tree into your staging area as a subtree by using the `--prefix` option to `read-tree`:
+
+새 두 파일이 Tree의 항목에 나타는 것을 확인해보자. 또한 test.txt의 해시값이 앞서 만든 "version 2"에 대한 해시값(`1f7a7a`)인 것을 확인할 수 있다. 단지 재미로 처음에 만들었던 Tree 객체를 현재 버전의 하위 디렉토리로 만들어보자. Tree 객체를 읽어 Stage 영역에 추가하기 위해 `read-tree` 명령을 사용한다. 지금의 상황처럼 하위 디렉토리로 Tree를 만들려면 `--prefix` 옵션을 사용할 수 있다:
 
 	$ git read-tree --prefix=bak d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	$ git write-tree
@@ -204,10 +226,12 @@ Notice that this tree has both file entries and also that the test.txt SHA is th
 
 If you created a working directory from the new tree you just wrote, you would get the two files in the top level of the working directory and a subdirectory named `bak` that contained the first version of the test.txt file. You can think of the data that Git contains for these structures as being like Figure 9-2.
 
-Insert 18333fig0902.png 
-Figure 9-2. The content structure of your current Git data.
+이렇게 기록한 새 Tree 객체로 새로운 작업 디렉토리를 만들어내면 가장 상위 디렉토리에 두 파일이 위치하고 그 아래에 `bak`라는 이름을 가진 첫 번째 버전의 파일을 포함하고 있는 하위 디렉토리가 만들어질 것이다. 그림 9-2로 Git이 어떤 구조로 데이터를 저장하고 있는지 나타낼 수 있다.
 
-### Commit Objects 커밋 객체 ###
+Insert 18333fig0902.png 
+Figure 9-2. Git이 바라보는 데이터 구조.
+
+### Commit Objects / 커밋 객체 ###
 
 You have three trees that specify the different snapshots of your project that you want to track, but the earlier problem remains: you must remember all three SHA-1 values in order to recall the snapshots. You also don’t have any information about who saved the snapshots, when they were saved, or why they were saved. This is the basic information that the commit object stores for you.
 
