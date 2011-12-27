@@ -54,6 +54,8 @@ This leaves four important entries: the `HEAD` and `index` files and the `object
 Git is a content-addressable filesystem. Great. What does that mean?
 It means that at the core of Git is a simple key-value data store. You can insert any kind of content into it, and it will give you back a key that you can use to retrieve the content again at any time. To demonstrate, you can use the plumbing command `hash-object`, which takes some data, stores it in your `.git` directory, and gives you back the key the data is stored as. First, you initialize a new Git repository and verify that there is nothing in the `objects` directory:
 
+Git은 Content-addressible 파일시스템이다. 대단하지 않은가? 이게 무슨 말이냐 하면 Git은 단순한 Key-Value 데이터 저장소라는 것이다. 어떤 형식의 데이터라도 Value로 집어넣을 수 있고 그에 해당하는 Key를 이용하여 언제든지 데이터를 가져올 수 있다. Plumbing 명령 `hash-object`를 사용하여 어떻게 작동하는지 살펴본다. `hash-object`는 어떤 데이터를 받아서 `.git` 디렉토리에 저장을 한다. 우선 새 Git 저장소를 만들고 아무런 데이터도 `objects` 디렉토리에 없는 것을 확인해보자:
+
 	$ mkdir test
 	$ cd test
 	$ git init
@@ -67,22 +69,32 @@ It means that at the core of Git is a simple key-value data store. You can inser
 
 Git has initialized the `objects` directory and created `pack` and `info` subdirectories in it, but there are no regular files. Now, store some text in your Git database:
 
+Git은 `objects` 디렉토리 아래에 `pack`과 `info`라는 하위 디렉토리를 만들어놓는 초기화를 했다. 디렉토리만 있을 뿐 파일은 아무것도 없다. Git 데이터베이스에 텍스트 파일을 저장해보자:
+
 	$ echo 'test content' | git hash-object -w --stdin
 	d670460b4b4aece5915caf5c68d12f560a9fe3e4
 
 The `-w` tells `hash-object` to store the object; otherwise, the command simply tells you what the key would be. `--stdin` tells the command to read the content from stdin; if you don’t specify this, `hash-object` expects the path to a file. The output from the command is a 40-character checksum hash. This is the SHA-1 hash — a checksum of the content you’re storing plus a header, which you’ll learn about in a bit. Now you can see how Git has stored your data:
+
+`hash-object` 명령은 데이터가 어떤 Key를 갖게 될지 Key 이름을 알려준다. `-w` 옵션은 에 데이터를 저장하도록 지시하며, `--stdin` 옵션은 stdin 표준 입력을 통해 데이터를 읽어들이도록 지시하는 옵션이다. 이 옵션을 지정하지 않으면 데이터를 읽을 파일의 경로가 입력되기를 기대할 것이다. `hash-object` 명령의 출력 내용은 40 글자 길이의 체크섬 해시다. 이 해시 데이터는 SHA-1 해시이며 헤더 정보를 포함하는 컨텐트 데이터에 대한 해시값이다. 헤더 정보는 차차 자세히 살펴보기로 한다. 이제 Git이 어떻게 데이터를 저장하는지를 알아보았다:
 
 	$ find .git/objects -type f 
 	.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4
 
 You can see a file in the `objects` directory. This is how Git stores the content initially — as a single file per piece of content, named with the SHA-1 checksum of the content and its header. The subdirectory is named with the first 2 characters of the SHA, and the filename is the remaining 38 characters.
 
+`objects` 디렉토리에 파일이 하나 새로 생긴것을 볼 수 있다. 기본적으로 이런식으로 Git은 데이터를 하나의 파일로 저장을 하며 데이터와 헤더 정보의 SHA-1 체크섬으로 이름짓는다. 하위 디렉토리 이름은 해시의 처음 두 글자를 따서 사용을 하며 나머지 38 글자는 파일의 이름이 된다.
+
 You can pull the content back out of Git with the `cat-file` command. This command is sort of a Swiss army knife for inspecting Git objects. Passing `-p` to it instructs the `cat-file` command to figure out the type of content and display it nicely for you:
+
+`cat-file` 명령으로 저장한 데이터를 불러올 수 있다. 이 명령은 Git 객체를 살펴보고 싶을 때 맥가이버칼 처럼 사용할 수 있다. `cat-file` 명령에 `-p` 옵션을 사용하여 적당한 형식으로 출력하도록 지시할 수 있으며, 그 결과는 다음과 같다:
 
 	$ git cat-file -p d670460b4b4aece5915caf5c68d12f560a9fe3e4
 	test content
 
 Now, you can add content to Git and pull it back out again. You can also do this with content in files. For example, you can do some simple version control on a file. First, create a new file and save its contents in your database:
+
+다시 한 번 Git 저장소에 데이터를 추가하고 불러와 보도록 하자. 이번에는 파일을 사용하여 버전관리를 적용하여 데이터를 추가해보도록 한다. 우선 새 파일을 하나 만들고 Git 저장소에 저장한다:
 
 	$ echo 'version 1' > test.txt
 	$ git hash-object -w test.txt 
@@ -90,11 +102,15 @@ Now, you can add content to Git and pull it back out again. You can also do this
 
 Then, write some new content to the file, and save it again:
 
+그리고 파일의 내용을 업데이트하고 다시 저장소에 저장을 한다:
+
 	$ echo 'version 2' > test.txt
 	$ git hash-object -w test.txt 
 	1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
 
 Your database contains the two new versions of the file as well as the first content you stored there:
+
+이제 데이터베이스에는 두가지 버전의 데이터가 저장되어 있다:
 
 	$ find .git/objects -type f 
 	.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a
@@ -103,17 +119,23 @@ Your database contains the two new versions of the file as well as the first con
 
 Now you can revert the file back to the first version
 
+첫 번째 버전으로 파일의 내용을 되돌리려면 다음과같이 한다:
+
 	$ git cat-file -p 83baae61804e65cc73a7201a7252750c76066a30 > test.txt 
 	$ cat test.txt 
 	version 1
 
 or the second version:
 
+두 번째 버전으로 파일의 내용을 적용하려면 다음과 같이 한다:
+
 	$ git cat-file -p 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a > test.txt 
 	$ cat test.txt 
 	version 2
 
 But remembering the SHA-1 key for each version of your file isn’t practical; plus, you aren’t storing the filename in your system — just the content. This object type is called a blob. You can have Git tell you the object type of any object in Git, given its SHA-1 key, with `cat-file -t`:
+
+하지만 데이터 저장에 사용한 SHA-1 키는 외워서 사용하기에는 쉽지 않다. 게다가 원래 파일의 이름도 저장해놓지도 않았다. 단지 파일의 컨텐트만 저장했을 뿐이다. 이런 종류의 객체를 Blob이라고 부른다. 주어진 SHA-1 키로 Git에게 객체의 타입이 어떤지 물어볼 수 있는데 `cat-file -t` 명령을 사용한다:
 
 	$ git cat-file -t 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
 	blob
