@@ -8,19 +8,19 @@
 
 현재 주요 오픈소스 프로젝트와 아주 많은 수의 기업 프로젝트에서 소스코드 관리를 위해 Subversion을 사용한다. 10여년간 Subversion은 가장 인기있는 오픈소스 VCS 도구였다. 그 이전 시대에서 가장 많이 사용하였던 CVS와 많이 닮았다.
 
-Git이 자랑하는 또 하나의 기능은 `git svn`이라는 양방향 Subversion 지원 도구이다. Git을 완벽한 Subversion 클라이언트로 사용할 수 있기 때문에 로컬에서는 Git의 기능을 활용하고 Push 할 때 Subversion 서버에 Push 할 수 있다. 즉 로컬 브랜치와 Merge, Stage 영역, Rebase, Chrry-pick 등의 Git 기능을 충분히 사용할 수 있다. 같이 일하는 동료는 선사시대 빛도 없는 곳에서 일하겠지만 말이다. `git svn`은 기업의 개발 환경에서 git을 사용하는 출발점으로 사용할 수 있고 우리가 Git을 도입하기 위해 기업내에서 노력하는 동안 동료가 효율적으로 환경을 바꿀 수 있도록 도움을 줄 수 잇다. Subversion 지원 도구는 DVCS 세상으로 인도하는 붉은 알약과 같은 것이다.
+Git이 자랑하는 또 하나의 기능은 `git svn`이라는 양방향 Subversion 지원 도구이다. Git을 완벽한 Subversion 클라이언트로 사용할 수 있기 때문에 로컬에서는 Git의 기능을 활용하고 Push 할 때 Subversion 서버에 Push 할 수 있다. 즉 로컬 브랜치와 Merge, Stage 영역, Rebase, Cherry-pick 등의 Git 기능을 충분히 사용할 수 있다. 같이 일하는 동료는 선사시대 빛도 없는 곳에서 일하겠지만 말이다. `git svn`은 기업의 개발 환경에서 git을 사용하는 출발점으로 사용할 수 있고 우리가 Git을 도입하기 위해 기업내에서 노력하는 동안 동료가 효율적으로 환경을 바꿀 수 있도록 도움을 줄 수 잇다. Subversion 지원 도구는 DVCS 세상으로 인도하는 붉은 알약과 같은 것이다.
 
 ### git svn ###
 
 Git과 Subversion을 이어주는 명령은 `git svn` 으로 시작한다. 이 명령 뒤에 추가적으로 몇 가지 더 명령이 정의되어 있으며 작은 예제를 보여주고 설명할 것이다.
 
-`git svn` 명령을 사용할 때는 절름발이인 Subversion을 사용하고 있다는 점을 염두해두자. 우리가 로컬 브랜치와 머지 기능을 손쉽게 쓸 수 있다고 하더라도 최대한 일직선으로 히스토리를 유지하는것이 좋다. Git 저장소를 사용하는것 처럼 하지 않는 것이 좋다.
+`git svn` 명령을 사용할 때는 절름발이인 Subversion을 사용하고 있다는 점을 염두해두자. 우리가 로컬 브랜치와 Merge 기능을 손쉽게 쓸 수 있다고 하더라도 최대한 일직선으로 히스토리를 유지하는것이 좋다. Git 저장소를 사용하는것 처럼 하지 않는 것이 좋다.
 
 히스토리를 재작성하지 말아야 하고 Push를 재전송하지도 말아야 한다. 동시에 같은 Git 저장소에 Push하지도 말아야 한다. Subversion은 단순히 일직선의 히스토리만 가질 수 있다. 우리가 일부는 SVN을 일부는 Git을 사용하는 팀에 있을 때에는 협업을 위해서 모두가 SVN Server를 사용해야 한다. 그래야 삶이 편하다.
 
 ### 설정하기 ###
 
-이 기능을 써보기 위해 우리는 SVN 저장소 하나가 필요하다. 물론 쓰기 권한도 있어야 한다. 아래 나오는 예제를 써보려면 저자의 test 저장소를 하나 복사해야 한다. 최근의 Subversion(1.4 이상) 에 포함된 `svnsync`라는 도구를 사용하여 SVN 저장소를 복사할 수 있다. 테스트를 해보기 위해 저자는 Google Code에 새로 Subversion 저장소를 하나 만들고 `protobuf` 라는 프로젝트의 일부 코드를 복사했다. `protobuf`는 네트워크 전송에 필요한 구조화된 데이터(프로토콜 같은 것들)의 인코딩을 도와주는 도구이다.
+이 기능을 써보기 위해 우리는 SVN 저장소 하나가 필요하다. 물론 쓰기 권한도 있어야 한다. 아래 나오는 예제를 써보려면 필자의 test 저장소를 하나 복사해야 한다. 최근의 Subversion(1.4 이상) 에 포함된 `svnsync`라는 도구를 사용하여 SVN 저장소를 복사할 수 있다. 테스트를 해보기 위해 필자는 Google Code에 새로 Subversion 저장소를 하나 만들고 `protobuf` 라는 프로젝트의 일부 코드를 복사했다. `protobuf`는 네트워크 전송에 필요한 구조화된 데이터(프로토콜 같은 것들)의 인코딩을 도와주는 도구이다.
 
 우선 로컬 Subversion 저장소를 하나 만들어야 한다:
 
@@ -188,7 +188,7 @@ Push하기 전에 서버의 내용을 Merge하는 Git과 달리 `git svn`은 충
 	First, rewinding head to replay your work on top of it...
 	Nothing to do.
 
-이 부분이 왜 중요하냐면 Push하고 난 프로젝트 상태가 Push하기 이전의 상태와 같지 않다. 충돌은 없고 변경사항이 원하는 대로 적용되지 않을 때 제대로 코드를 확인할 수 없다. 이러한 부분이 Git과 다른점인데 Git에서는 서버로 보내기 전에 프로젝트 코드의 모든 상태를 테스트할 수 있다. SVN은 서버로 커밋하기 전과 후의 상태가 동일하다는 것을 확신할 수 없다.
+이 부분이 왜 중요하냐면 Push하고 난 프로젝트 상태가 Push하기 이전의 상태와 같지 않다는 것이다. 충돌은 없고 변경사항이 원하는 대로 적용되지 않을 때 제대로 코드를 확인할 수 없다. 이러한 부분이 Git과 다른점인데 Git에서는 서버로 보내기 전에 프로젝트 코드의 모든 상태를 테스트할 수 있다. SVN은 서버로 커밋하기 전과 후의 상태가 동일하다는 것을 확신할 수 없다.
 
 `git svn rebase` 명령으로도 Subversion 서버로부터 변경사항을 가져오는데 사요할 수 있다. 커밋을 보낼 준비가 되지 않았다 해도 말이다. `git svn fetch` 명령을 사용할 수도 있지만 `git svn rebase` 명령은 변경사항을 가져오고 적용까지 한 번에 해준다.
 
@@ -202,7 +202,7 @@ Push하기 전에 서버의 내용을 Merge하는 Git과 달리 `git svn`은 충
 
 ### Git 브랜치 문제 ###
 
-Git에 익숙하다면 일을 할 때 먼저 토픽 브랜치를 만들고 다시 Merge하는 방식을 쓰려고 할 것이다. `git svn`으로 Subversion 서버에 Push할 거라면 브랜치를 Merge하지 않고 Rebase할 것이다. 그 이유는 Subversion은 일직선 히스토리 밖에 모르고 Git의 Merge도 알지 못하기 때문이다. 그래서 Git 커밋을 Subversion 커밋으로 변경할 때 `git svn`은 첫번째 부모 정보만 사용한다.
+Git에 익숙하다면 일을 할 때 먼저 토픽 브랜치를 만들고 다시 Merge하는 방식을 쓰려고 할 것이다. `git svn`으로 Subversion 서버에 Push할 거라면 브랜치를 Merge하지 않고 Rebase할 것이다. 그 이유는 Subversion은 일직선 히스토리 밖에 모르고 Git의 Merge도 알지 못하기 때문이다. 그래서 Git 커밋을 Subversion 커밋으로 변경할 때 `git svn`은 첫 번째 부모 정보만 사용한다.
 
 `experiment` 브랜치를 하나 만들고 2개의 변경사항을 커밋한다. 그리고 `master` 브랜치로 Merge하고 나서 `dcommit` 명령을 수행하면 아래와 같은 모양이 된다:
 
@@ -326,7 +326,7 @@ Subversion에 익숙한 사람은 Git 히스토리를 SVN 형식으로 보고 �
 
 #### Subversion에서 무시하는것 무시하기 ####
 
-Subversion 저장소를 클론하면 쓸데 없는 파일을 커밋하지 않도록 `svn:ignore` 속성을 `.gitignore` 파일로 만들고 싶을 것이다. `git svn`은 i이 문제와 관련된 명령어가 두 가지 있다. 하나는 `git svn create-ignore` 명령로 해당 위치에 커밋할 수 있는 `.gitignore` 파일을 생성해준다.
+Subversion 저장소를 클론하면 쓸데 없는 파일을 커밋하지 않도록 `svn:ignore` 속성을 `.gitignore` 파일로 만들고 싶을 것이다. `git svn`은 이 문제와 관련된 명령 두 가지 있다. 하나는 `git svn create-ignore` 명령으로 해당 위치에 커밋할 수 있는 `.gitignore` 파일을 생성해준다.
 
 두 번째 방법은 `git svn show-ignore` 명령으로 `.gitignore`에 추가할 목록을 출력해 준다. 프로젝트 exclude 파일로 결과를 리다이렉트할 수 있다:
 
@@ -347,7 +347,7 @@ Subversion 저장소를 클론하면 쓸데 없는 파일을 커밋하지 않도
 
 다른 VCS를 사용하는 프로젝트를 Git으로 옮기고 싶다면 우선 프로젝트를 Git으로 이전(Migrate)해야 한다. 이번 절에서는 Git에 들어 있는 Importer를 살펴보고 직접 Importer를 만드는 방법을 알아본다.
 
-### 임포트 ###
+### 가져오기 ###
 
 널리 사용되는 Subversion과 Perforce로부터 프로젝트를 이전하는 방법을 살펴본다. 이 두 VCS에서 Git으로 이전하고자 하는 사람이 많고 Importer도 Git에 이미 들어 있다.
 
@@ -355,18 +355,18 @@ Subversion 저장소를 클론하면 쓸데 없는 파일을 커밋하지 않도
 
 `git svn`을 설명하는 절을 읽었으면 쉽게 `git svn clone` 명령으로 저장소를 가져올 수 있다. 가져오고 나서 Subversion 서버는 중지하고 Git 서버를 만들고 사용하면 된다. 만약 히스토리 정보가 필요하면 (느린) Subversion 서버 없이 로컬에서 조회해 볼 수 있다.
 
-이 기능은 문제가 좀 있다. 시간이 많이 들기 때문에 당장이라도 시작해야 한다. 첫 번째 문제는 저자정보다. Subversion에서 커밋하는 사람은 해당 시스템에 계정이 있어야 한다. `blame`이나 `git svn log`와 같은 명령에서 `schacon`이라는 이름을 봤을 것이다. 이 정보를 Git 형식의 정보려 변경하려면 Subversion 사용자와 Git 저자를 연결시켜줘야 한다.  이 저자 정보를 좀 더 나은 Git 저자 정보로 변경하기 위해서 Subversion 사용자 이름과 Git 저자 간에 연결을 해 주어야 한다. `users.txt`라는 파일을 다음과 같이 만든다:
+이 가져오기 기능에 문제가 좀 있는데, 우선 가져오기에 시간이 많이 든다는 점이다. 하지만 일단 가져오기를 하는 것이 낫다. 첫 번째 문제는 Author 정보이다. Subversion에서 커밋하는 사람은 해당 시스템에 계정이 있어야 한다. `blame`이나 `git svn log`와 같은 명령에서 `schacon`이라는 이름을 봤을 것이다. 이 정보를 Git 형식의 정보려 변경하려면 Subversion 사용자와 Git Author를 연결시켜줘야 한다.  이 Author 정보를 좀 더 나은 Git Author 정보로 변경하기 위해서 Subversion 사용자 이름과 Git Author 간에 연결을 해 주어야 한다. `users.txt`라는 파일을 다음과 같이 만든다:
 
 	schacon = Scott Chacon <schacon@geemail.com>
 	selse = Someo Nelse <selse@geemail.com>
 
-SVN에 기록된 저자 이름은 어떤 것들이 있는지 다음 명령으로 조회한다:
+SVN에 기록된 Author 이름은 어떤 것들이 있는지 다음 명령으로 조회한다:
 
 	$ svn log --xml | grep author | sort -u | perl -pe 's/.>(.?)<./$1 = /'
 
-우선 XML 형식으로 SVN 로그를 출력하고, 거기서 author 정보만 찾고, 중복된 것을 제거하고, XML Tag는 버린다. 물론 `grep`, `sort`, `perl` 명령이 동작하는 시스템에서만 이 명령을 사용할 수 있다. 이 결과에 Git 저자 정보를 더해서 `users.txt` 만든다.
+우선 XML 형식으로 SVN 로그를 출력하고, 거기서 Author 정보만 찾고, 중복된 것을 제거하고, XML Tag는 버린다. 물론 `grep`, `sort`, `perl` 명령이 동작하는 시스템에서만 이 명령을 사용할 수 있다. 이 결과에 Git Author 정보를 더해서 `users.txt` 만든다.
 
-이 파일을 `git svn` 명령에 전달하면 보다 정확한 저자 정보를 Git 저장소에 남길 수 있다. 그리고 `git svn`의 `clone`이나 `init` 명령에 `--no-metadata` 옵션을 주면 Subversion의 메타데이터를 저장하지 않는다. 해당 명령은 아래와 같다:
+이 파일을 `git svn` 명령에 전달하면 보다 정확한 Author 정보를 Git 저장소에 남길 수 있다. 그리고 `git svn`의 `clone`이나 `init` 명령에 `--no-metadata` 옵션을 주면 Subversion의 메타데이터를 저장하지 않는다. 해당 명령은 아래와 같다:
 
 	$ git-svn clone http://my-project.googlecode.com/svn/ \
 	      --authors-file=users.txt --no-metadata -s my_project
@@ -390,7 +390,7 @@ SVN에 기록된 저자 이름은 어떤 것들이 있는지 다음 명령으로
 
 	    fixed install - go to trunk
 
-저자 정보 항목이 훨씬 Git답고 `git-svn-id` 항목도 기록되지 않았다.
+Author 정보 항목이 훨씬 Git답고 `git-svn-id` 항목도 기록되지 않았다.
 
 이제 뒷 정리를 해야 한다. `git svn`이 만들어 준 이상한 브랜치나 Tag를 제거해야 한다. 우선 이상한 원격 Tag를 모두 진짜 Git Tag로 옮긴다.그리고 브랜치도 똑같다. 원격 브랜치를 로컬 브랜치로 옮긴다. 
 
@@ -418,12 +418,12 @@ Tag를 진정한 Git Tag로 만들려면 다음과 같이 한다:
 
 ### Perforce ###
 
-이제 Perforce 차례다. Preforce Importer도 Git에 들어 있지만 소스코드의 `contrib` 부분에 있기 때문에 `git svn` 처럼 바로 사용할 수 없다. Perforce Importer를 사용하려면 우선 git.kernel.org에서 Git 소스코드를 가져와야 한다:
+이제 Perforce 차례다. Preforce Importer도 Git에 들어 있지만 소스코드의 `contrib` 에 있기 때문에 `git svn` 처럼 바로 사용할 수 없다. Perforce Importer를 사용하려면 우선 git.kernel.org에서 Git 소스코드를 가져와야 한다:
 
 	$ git clone git://git.kernel.org/pub/scm/git/git.git
 	$ cd git/contrib/fast-import
 
-`git-p4` 라는 파이썬 스크립트는 `fast-import` 디렉토리에 있다. 그리고 Python과 `p4`가 설치돼 있어야 이 스크립트가 동작한다. Perforce Public Depot에 있는 Jam 프로젝트를 옮기는 예제를 살펴보자. 우선 Perfoce Depot의 주소를 P4PORT 환경변수에 설정한다:
+`git-p4` 라는 Python 스크립트는 `fast-import` 디렉토리에 있다. 그리고 Python과 `p4`가 설치돼 있어야 이 스크립트가 동작한다. Perforce Public Depot에 있는 Jam 프로젝트를 옮기는 예제를 살펴보자. 우선 Perfoce Depot의 주소를 P4PORT 환경변수에 설정한다:
 
 	$ export P4PORT=public.perforce.com:1666
 
@@ -500,11 +500,11 @@ Run the `git-p4 clone` command to import the Jam project from the Perforce serve
 	back_2009_02_03
 	current
 
-Importer를 만들기 전에 우선 Git이 어떻게 데이터를 저장하는지 알아야 한다. 이미 알고 있듯이 Git은 기본적으로 스냅샷을 가리키는 커밋 개체가 연결된 리스트이다. 스냅샷이 뭐고, 그걸 가리키는 커밋은 또 뭐고, 그 커밋의 순서가 어떻게 되는가를 `fast-import`에 알려 주는 것이 해야할 일의 전부다. 그래서 디렉토리마다 스냅샷을 만들고, 커밋 개체를 만들고, 이전 커밋과 연결 시킨다.
+Importer를 만들기 전에 우선 Git이 어떻게 데이터를 저장하는지 알아야 한다. 이미 알고 있듯이 Git은 기본적으로 Snapshot을 가리키는 커밋 개체가 연결된 리스트이다. Snapshot이 뭐고, 그걸 가리키는 커밋은 또 뭐고, 그 커밋의 순서가 어떻게 되는가를 `fast-import`에 알려 주는 것이 해야할 일의 전부다. 그래서 디렉토리마다 Snapshot을 만들고, 커밋 개체를 만들고, 이전 커밋과 연결 시킨다.
 
 7장의 "정책 구현하기" 절에서 했던 것 처럼 Ruby로 스크립트를 작성한다. 나는 Ruby를 많이 사용하기도 하고 Ruby가 읽기도 쉽다. 하지만 자신에게 익숙한 것을 사용하여 표준출력으로 적절한 정보만 출력할 수 있으면 된다. 그리고 이 일을 Windows에서 할 것이라면 줄바꿈 문자에 CR(Carriage Return) 문자가 들어가지 않도록 주의해야 한다. Windows인데도 불구하고 `git fast-import` 명령은 줄바꿈 문자로 CRLF 문자가 아니라 LF(Line Feed) 문자만 허용한다.
 
-우선 대상 디렉토리로 이동해서 각 하위 디렉토리를 살펴보자. 각 하위 디렉토리가 스냅샷 하나가 되고 커밋 하나가 된다. 하위 디렉토리마다 다니면서 필요한 정보를 출력한다. 기본적인 로직은 다음과 같다:
+우선 대상 디렉토리로 이동해서 각 하위 디렉토리를 살펴보자. 각 하위 디렉토리가 Snapshot 하나가 되고 커밋 하나가 된다. 하위 디렉토리마다 다니면서 필요한 정보를 출력한다. 기본적인 로직은 다음과 같다:
 
 	last_mark = nil
 
@@ -520,7 +520,7 @@ Importer를 만들기 전에 우선 Git이 어떻게 데이터를 저장하는�
 	  end
 	end
 
-각 디렉토리에서 `print_export`를 호출하는데 이 함수는 인자로 디렉토리와 이전 스냅샷 Mark를 전달받고 현 스냅샷 Mark를 반환한다. 그래서 적절히 연결 시킬 수 있다. `fast-import`에서 "Mark"는 커밋의 식별자를 말한다. 커밋을 하나 만들면 Mark도 같이 만들어 이 Mark로 다른 커밋과 연결 시킨다. 그래서 `print_export`에서 우선 해야 하는 일은 각 디렉토리 이름으로 Mark를 생성하는 것이다:
+각 디렉토리에서 `print_export`를 호출하는데 이 함수는 인자로 디렉토리와 이전 Snapshot Mark를 전달받고 현 Snapshot Mark를 반환한다. 그래서 적절히 연결 시킬 수 있다. `fast-import`에서 "Mark"는 커밋의 식별자를 말한다. 커밋을 하나 만들면 Mark도 같이 만들어 이 Mark로 다른 커밋과 연결 시킨다. 그래서 `print_export`에서 우선 해야 하는 일은 각 디렉토리 이름으로 Mark를 생성하는 것이다:
 
 	mark = convert_dir_to_mark(dir)
 
@@ -536,7 +536,7 @@ Mark는 정수 값을 사용해야 하기 때문에 디렉토리를 배열에 �
 
 Now that you have an integer representation of your commit, you need a date for the commit metadata. Because the date is expressed in the name of the directory, you’ll parse it out. The next line in your `print_export` file is
 
-각 커밋을 가리키는 정수 Mark를 만들었고 다음은 커밋 메타데이터에 넣을 날짜 정보가 필요하다. 이 날짜는 디렉토리 이름에 있는 것을 가져다 사용한다. `print_export`의 두번째 줄은 다음과 같다:
+각 커밋을 가리키는 정수 Mark를 만들었고 다음은 커밋 메타데이터에 넣을 날짜 정보가 필요하다. 이 날짜는 디렉토리 이름에 있는 것을 가져다 사용한다. `print_export`의 두 번째 줄은 다음과 같다:
 
 	date = convert_dir_to_date(dir)
 
@@ -552,7 +552,7 @@ Now that you have an integer representation of your commit, you need a date for 
 	  end
 	end
 
-시간는 정수 형태로 반환한다. 메타정보에 마지막으로 필요한 것은 저자인데 이 것은 전역 변수 하나로 설정해서 사용한다:
+시간는 정수 형태로 반환한다. 메타정보에 마지막으로 필요한 것은 Author인데 이 것은 전역 변수 하나로 설정해서 사용한다:
 
 	$author = 'Scott Chacon <schacon@example.com>'
 
@@ -575,7 +575,7 @@ Now that you have an integer representation of your commit, you need a date for 
 	  print "data #{string.size}\n#{string}"
 	end
 
-이제 남은 것은 스냅샷에 파일 내용를 포함시키는 것 뿐이다. 디렉토리로 구분돼 있기 때문에 어렵지 않다. 우선 `deleteall` 이라는 명령을 출력하고 그 뒤에 모든 파일의 내용을 출력한다. 그런면 Git은 스냅샷을 잘 저장할 것이다:
+이제 남은 것은 Snapshot에 파일 내용를 포함시키는 것 뿐이다. 디렉토리로 구분돼 있기 때문에 어렵지 않다. 우선 `deleteall` 이라는 명령을 출력하고 그 뒤에 모든 파일의 내용을 출력한다. 그런면 Git은 Snapshot을 잘 저장할 것이다:
 
 	puts 'deleteall'
 	Dir.glob("**/*").each do |file|
@@ -583,7 +583,7 @@ Now that you have an integer representation of your commit, you need a date for 
 	  inline_data(file)
 	end
 
-중요:	대부분의 VCS는 리비전을 커밋간의 변화로 생각하기 때문에 `fast-import`는 추가/삭제/변경된 부분만 입력받을 수도 있다. 스냅샷 사이의 차이점밖에 출력할 수 없는 상황이라면 훨씬 어렵다. 줄 수 있는 데이터는 전부 Git에 줘서 Git이 계산하게 해야 한다. 꼭 이렇게 해야 한다면 어떻게 데이터를 전달해야 하는지 `fast-import`의 ManPage를 참고하라.
+중요:	대부분의 VCS는 리비전을 커밋간의 변화로 생각하기 때문에 `fast-import`는 추가/삭제/변경된 부분만 입력받을 수도 있다. Snapshot 사이의 차이점밖에 출력할 수 없는 상황이라면 훨씬 어렵다. 줄 수 있는 데이터는 전부 Git에 줘서 Git이 계산하게 해야 한다. 꼭 이렇게 해야 한다면 어떻게 데이터를 전달해야 하는지 `fast-import`의 ManPage를 참고하라.
 
 파일 정보와 내용은 다음과 같이 출력한다:
 
@@ -690,7 +690,5 @@ Now that you have an integer representation of your commit, you need a date for 
 
 ## 요약 ##
 
-You should feel comfortable using Git with Subversion or importing nearly any existing repository into a new Git one without losing data. The next chapter will cover the raw internals of Git so you can craft every single byte, if need be.
-
-Subversion 프로젝트에서 Git을 사용하거나, 다른 VCS 저장소를 Git 저장소로 손실 없이 옮기는 방법에 대해 알아 봤다. 다음장에서는 Git 내부를 까볼 것이다. 그래서 필요하다면 바이트 하나하나 다룰 수 있는 수준이 될 것이다.
+Subversion 프로젝트에서 Git을 사용하거나, 다른 VCS 저장소를 Git 저장소로 손실 없이 옮기는 방법에 대해 알아 봤다. 다음장에서는 Git 내부를 까볼 것이다. 필요하다면 바이트 하나하나 다룰 수 있는 수준이 될 것이다.
 
