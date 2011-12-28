@@ -235,12 +235,18 @@ Figure 9-2. Git이 바라보는 데이터 구조.
 
 You have three trees that specify the different snapshots of your project that you want to track, but the earlier problem remains: you must remember all three SHA-1 values in order to recall the snapshots. You also don’t have any information about who saved the snapshots, when they were saved, or why they were saved. This is the basic information that the commit object stores for you.
 
+각기 다른 Snapshot에 대한 Tree 객체가 세 개 만들어졌다. 하지만 이 Snapshot을 불러내기 위해서 SHA-1 Value를 기억하고 있어야 하는 앞서 살펴본 문제가 남아있다. 또한 저장된 Snapshot에 대한 어떠한 추가정보 즉 왜 또는 어떻게 저장되었는가에 대한 정보가 없다. 이런 기본적인 정보는 Commit 객체에 저장된다:
+
 To create a commit object, you call `commit-tree` and specify a single tree SHA-1 and which commit objects, if any, directly preceded it. Start with the first tree you wrote:
+
+Commit 객체를 생성하기 위해 `commit-tree` 명령에 Tree 객체의 SHA-1 ID를 함께 넘겨준다 (번역확인). 앞서 저장한 첫 번째 Tree를 가지고 실행해보면 아래와 같다:
 
 	$ echo 'first commit' | git commit-tree d8329f
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d
 
 Now you can look at your new commit object with `cat-file`:
+
+새로 생긴 Commit 객체를 `cat-file` 명령으로 확인해보자:
 
 	$ git cat-file -p fdf4fc3
 	tree d8329fc1cc938780ffdd9f94e0d364e0ea74f579
@@ -251,7 +257,11 @@ Now you can look at your new commit object with `cat-file`:
 
 The format for a commit object is simple: it specifies the top-level tree for the snapshot of the project at that point; the author/committer information pulled from your `user.name` and `user.email` configuration settings, with the current timestamp; a blank line, and then the commit message.
 
+Commit 객체의 형식은 간단하다. 해당 시점의 Snapshot에서 최상단 Tree를 하나 가리키고 있으며 `user.name`과 `user.email` 설정에서 읽은 Author/Committer 정보, 시간정보, 그리고 한 줄 비운 다음 커밋 메시지를 갖고 있다.
+
 Next, you’ll write the other two commit objects, each referencing the commit that came directly before it:
+
+다음 두 커밋 객체는 이전의 커밋 객체를 가리키도록 다음과 같이 생성한다:
 
 	$ echo 'second commit' | git commit-tree 0155eb -p fdf4fc3
 	cac0cab538b970a37ea1e769cbbde608743bc96d
@@ -259,6 +269,8 @@ Next, you’ll write the other two commit objects, each referencing the commit t
 	1a410efbd13591db07496601ebc7a059dd55cfe9
 
 Each of the three commit objects points to one of the three snapshot trees you created. Oddly enough, you have a real Git history now that you can view with the `git log` command, if you run it on the last commit SHA-1:
+
+각 세 개의 Commit 객체는 Snapshot의 Tree를 하나씩 가리키고 있다. 이상해보이긴 해도 진짜 Git 히스토리 정보가 만들어진 것이다. `git log` 명령을 실행해 보면 아래와 같이 출력한다:
 
 	$ git log --stat 1a410e
 	commit 1a410efbd13591db07496601ebc7a059dd55cfe9
@@ -291,6 +303,8 @@ Each of the three commit objects points to one of the three snapshot trees you c
 
 Amazing. You’ve just done the low-level operations to build up a Git history without using any of the front ends. This is essentially what Git does when you run the `git add` and `git commit` commands — it stores blobs for the files that have changed, updates the index, writes out trees, and writes commit objects that reference the top-level trees and the commits that came immediately before them. These three main Git objects — the blob, the tree, and the commit — are initially stored as separate files in your `.git/objects` directory. Here are all the objects in the example directory now, commented with what they store:
 
+놀랍지 않은가! 방금 우리는 저수준의 명령으로 버전관리 명령을 사용하지 않고 Git 히스토리를 만들어낸 것이다. 위의 작업들이 `git add`와 `git commit` 명령을 실행했을 때 Git이 실제로 하는 일이다. 변경된 파일에 대한 Blob을 저장하고 Index를 수정하여 Tree 객체를 기록하고 Commit 객체를 작성한다. 이 세가지 객체, 즉 Blob, Tree, Commit 객체가 Git의 주요 객체가 되겠다. 기본적으로 이 객체들은 각각 `.git/objects` 디렉토리에 저장된다. 위의 예에서 생성된 모든 객체들의 모습은 다음과 같을 것이다:
+
 	$ find .git/objects -type f
 	.git/objects/01/55eb4229851634a0f03eb265b69f5a2d56f341 # tree 2
 	.git/objects/1a/410efbd13591db07496601ebc7a059dd55cfe9 # commit 3
@@ -305,8 +319,10 @@ Amazing. You’ve just done the low-level operations to build up a Git history w
 
 If you follow all the internal pointers, you get an object graph something like Figure 9-3.
 
+내부의 포인터들을 따라가 보면 그림 9-3과 같은 모양의 그래프를 그릴 수 있다.
+
 Insert 18333fig0903.png 
-Figure 9-3. All the objects in your Git directory.
+Figure 9-3. Git 저장소 내의 모든 객체.
 
 ### Object Storage / 객체 저장소 ###
 
