@@ -564,6 +564,8 @@ Remote 참조는 `refs/heads`에 있는 참조인 브랜치와 차이점은 Chec
 
 Let’s go back to the objects database for your test Git repository. At this point, you have 11 objects — 4 blobs, 3 trees, 3 commits, and 1 tag:
 
+테스트용 Git 저장소의 개체 데이터베이스를 다시 살펴보자. 아마 지금 개체는 모두 11개로 Blob 4개, Tree 3개, Commit 3개, Tag 1개가 있을 것이다:
+
 	$ find .git/objects -type f
 	.git/objects/01/55eb4229851634a0f03eb265b69f5a2d56f341 # tree 2
 	.git/objects/1a/410efbd13591db07496601ebc7a059dd55cfe9 # commit 3
@@ -579,6 +581,8 @@ Let’s go back to the objects database for your test Git repository. At this po
 
 Git compresses the contents of these files with zlib, and you’re not storing much, so all these files collectively take up only 925 bytes. You’ll add some larger content to the repository to demonstrate an interesting feature of Git. Add the repo.rb file from the Grit library you worked with earlier — this is about a 12K source code file:
 
+Git은 zlib으로 파일 내용을 압축하기 때문에 저장 공간이 많이 필요하지 않다. 그래서 이 데이터베이스에 저장된 파일은 겨우 925 바이트 밖에 되지 않는다. 크기가 큰 파일을 추가해서 이 기능의 효과를 좀 더 살펴 보자. 앞 장에서 사용했던 Grit 라이브러리에 들어 있는 repo.rb 파일을 을 추가한다. 이 파일의 크기는 약 12K이다.
+
 	$ curl http://github.com/mojombo/grit/raw/master/lib/grit/repo.rb > repo.rb
 	$ git add repo.rb 
 	$ git commit -m 'added repo.rb'
@@ -590,6 +594,8 @@ Git compresses the contents of these files with zlib, and you’re not storing m
 
 If you look at the resulting tree, you can see the SHA-1 value your repo.rb file got for the blob object:
 
+추가한 Tree 개체를 보면 repo.rb 파일의 SHA-1 값이 무엇인지 확인할 수 있다:
+
 	$ git cat-file -p master^{tree}
 	100644 blob fa49b077972391ad58037050f2a75f74e3671e92      new.txt
 	100644 blob 9bc1dc421dcd51b4ac296e3e5b6e2a99cf44391e      repo.rb
@@ -597,10 +603,14 @@ If you look at the resulting tree, you can see the SHA-1 value your repo.rb file
 
 You can then use `git cat-file` to see how big that object is:
 
+개체의 크기도 `git cat-file` 명령으로 확인할 수 있다:
+
 	$ git cat-file -s 9bc1dc421dcd51b4ac296e3e5b6e2a99cf44391e
 	12898
 
 Now, modify that file a little, and see what happens:
+
+수정하면 어떻게 되는지 살펴보기 위해서 파일을 조금 수정해보자:
 
 	$ echo '# testing' >> repo.rb 
 	$ git commit -am 'modified repo a bit'
@@ -609,6 +619,8 @@ Now, modify that file a little, and see what happens:
 
 Check the tree created by that commit, and you see something interesting:
 
+수정한 커밋의 Tree 개체를 까보면 흥미로운 점을 발견할 수 있다:
+
 	$ git cat-file -p master^{tree}
 	100644 blob fa49b077972391ad58037050f2a75f74e3671e92      new.txt
 	100644 blob 05408d195263d853f09dca71d55116663690c27c      repo.rb
@@ -616,12 +628,18 @@ Check the tree created by that commit, and you see something interesting:
 
 The blob is now a different blob, which means that although you added only a single line to the end of a 400-line file, Git stored that new content as a completely new object:
 
+이 Blob 개체는 다른 개체다. 새 Blob 개체는 400 줄 이후에 한 줄이 더 추가된 새 것이다. Git은 완전히 새로운 Blob 개체를 만들어 저장한다:
+
 	$ git cat-file -s 05408d195263d853f09dca71d55116663690c27c
 	12908
 
 You have two nearly identical 12K objects on your disk. Wouldn’t it be nice if Git could store one of them in full but then the second object only as the delta between it and the first?
 
+그럼 약 12K 짜리 파일을 두 개 가지게 된다. 거의 같은 파일을 두 개나 가지게 되는 것이 못 마땅할 수도 있다. 처음 것과 두번째 것 사이의 차이점만 저장할 수 없을까?
+
 It turns out that it can. The initial format in which Git saves objects on disk is called a loose object format. However, occasionally Git packs up several of these objects into a single binary file called a packfile in order to save space and be more efficient. Git does this if you have too many loose objects around, if you run the `git gc` command manually, or if you push to a remote server. To see what happens, you can manually ask Git to pack up the objects by calling the `git gc` command:
+
+가능하다. Git이 처음 개체를 저장하는 형식은 `loose object format`이라고 부른다. 하지만 나중에 이 개체들을 파일 하나로 압축(Pack)할 수 있다. 그래서 공간을 절약하고 효율을 높일 수 있다. `loose object`가 너무 많거나, `git gc` 명령을 실행했을 때, 그리고 원격 서버로 Push할 때 Git은 압축한다. `git gc` 명령을 실행해서 어떻게 압축되는지 살펴보자:
 
 	$ git gc
 	Counting objects: 17, done.
@@ -632,6 +650,8 @@ It turns out that it can. The initial format in which Git saves objects on disk 
 
 If you look in your objects directory, you’ll find that most of your objects are gone, and a new pair of files has appeared:
 
+`objects` 디렉토리를 열어보면 개체 대부분이 사라졌고 한 쌍의 파일이 새로 생긴 것을 확인할 수 있다.
+
 	$ find .git/objects -type f
 	.git/objects/71/08f7ecb345ee9d0084193f147cdad4d2998293
 	.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4
@@ -641,9 +661,15 @@ If you look in your objects directory, you’ll find that most of your objects a
 
 The objects that remain are the blobs that aren’t pointed to by any commit — in this case, the "what is up, doc?" example and the "test content" example blobs you created earlier. Because you never added them to any commits, they’re considered dangling and aren’t packed up in your new packfile.
 
+아직 남아 있는 Blob 개체는 어떤 커밋도 참조하지 않는 개체다. 즉, "what is up, doc?"과 "test content" 예제에서 만들었던 개체이다. 어떤 커밋에도 추가되지 않으면 이 개체는 `dangling` 상태라고 취급되고 Packfile에 추가되지 않는다.
+
 The other files are your new packfile and an index. The packfile is a single file containing the contents of all the objects that were removed from your filesystem. The index is a file that contains offsets into that packfile so you can quickly seek to a specific object. What is cool is that although the objects on disk before you ran the `gc` were collectively about 12K in size, the new packfile is only 6K. You’ve halved your disk usage by packing your objects.
 
+새로 생긴 파일은 Packfile과 그 Index이다. 파일 시스템에서 삭제된 개체가 전부 이 Packfile에 저장된다. Index 파일은 빠르게 찾을 수 있도록 Packfile의 오프셋이 들어 있다. `git gc` 명령을 실행하기 전에 있던 파일 크기는 약 12K 정도 였었는데 새로 만들어진 Packfile은 겨우 6K에 불과하다. 짱이다. 개체를 압축하면 디스크 사용량은 절반으로 줄어든다.
+
 How does Git do this? When Git packs objects, it looks for files that are named and sized similarly, and stores just the deltas from one version of the file to the next. You can look into the packfile and see what Git did to save space. The `git verify-pack` plumbing command allows you to see what was packed up:
+
+어떻게 이런 일이 가능할까? 개체를 압축하면 Git은 먼저 이름이나 크기가 비슷한 파일을 찾는다. 그리고 두 파일을 비교해서 한 파일은 다른 부분만 저장한다. Git이 얼마나 공간을 절약해 주는지 Packfile을 열어 확인할 수 있다. `git verify-pack` 명령어는 압축한 것을 보여준다:
 
 	$ git verify-pack -v \
 	  .git/objects/pack/pack-7a16e4488ae40c7d2bc56ea2bd43e25212a66c45.idx
@@ -670,7 +696,11 @@ How does Git do this? When Git packs objects, it looks for files that are named 
 
 Here, the `9bc1d` blob, which if you remember was the first version of your repo.rb file, is referencing the `05408` blob, which was the second version of the file. The third column in the output is the size of the object in the pack, so you can see that `05408` takes up 12K of the file but that `9bc1d` only takes up 7 bytes. What is also interesting is that the second version of the file is the one that is stored intact, whereas the original version is stored as a delta — this is because you’re most likely to need faster access to the most recent version of the file.
 
+`9bc1d1` Blob이 처음 추가한 `repo.rb` 파일인데, 이 Blob은 두번째 버전인 `05408` Blob을 참조한다. 개체에서 세번째 컬럼은 압축된 개체의 크기를 나타낸다. `05408`의 크기는 12K지만 `9bc1d`는 7 바이트 밖에 안된다. 특이한 점은 원본을 그대로 저장하는 것이 첫번째가 아니라 두번째 버전이라는 것이다. 첫 번째 버전은 차이점만 저장된다. 보통 최신 버전에 접근하는 속도가 더 빨라야 하기 때문에 이렇게 하는 것이다.
+
 The really nice thing about this is that it can be repacked at any time. Git will occasionally repack your database automatically, always trying to save more space. You can also manually repack at any time by running `git gc` by hand.
+
+이 기능이 정말 죽여주는 점은 언제나 재압축할 수 있다는 것이다. Git은 자동으로 데이터베이스를 재압축해서 공간을 절약한다. 그리고 `git gc` 명령으로 언제나 직접 재압축할 수도 있다.
 
 ## The Refspec / Refspec ##
 
