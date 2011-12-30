@@ -2,35 +2,36 @@
 
 You may have skipped to this chapter from a previous chapter, or you may have gotten here after reading the rest of the book — in either case, this is where you’ll go over the inner workings and implementation of Git. I found that learning this information was fundamentally important to understanding how useful and powerful Git is, but others have argued to me that it can be confusing and unnecessarily complex for beginners. Thus, I’ve made this discussion the last chapter in the book so you could read it early or later in your learning process. I leave it up to you to decide.
 
-앞의 여러 장을 건너뛰고 왔든 다 읽고 왔든 간에 우리가 대면하고 있는 9장은 Git의 내부 구조와 실제로 어떻게 구현되어 있는가를 살펴본다. Git이 얼마나 쓸만한지 그리고 강력한 기능을 갖고 있는지 제대로 이해하려면 이 9장의 내용을 배워보는 것이 매우 중요다고 생각한다. 다른이들은 초보자가 이해하기에 9장은 이해하는데 더 혼란스럽고 불필요하다고 이야기하기도 한다. 그래서 9장의 내용은 책의 가장 마지막 장에 두어 배우는 과정에서 먼저 볼지 나중에 볼지 독자가 선택할 수 있도록 하였다.
+여기까지 다 읽고 왔든 건너 뛰고 왔든 간에 지금 펼진 9장은 Git이 어떻게 구현돼 있고 내부적으로 어떻게 동작하는지 살펴볼 것이다.
+Git이 얼마나 유용하고 강력한지 알려면 9장의 내용을 꼭 알아야 한다. 초보자에게 9장은 너무 혼란스럽고 불필요하다고 이야기하는 사람들도 있다. 그래서 이 내용을 책의 가장 마지막에 넣었고 독자가 스스로 먼저 볼지 나중에 볼지 선택할 수 있도록 하였다.
 
 Now that you’re here, let’s get started. First, if it isn’t yet clear, Git is fundamentally a content-addressable filesystem with a VCS user interface written on top of it. You’ll learn more about what this means in a bit.
 
-자 이제 본격적으로! 우선 Git은 기본적으로 VCS 사용자 인터페이스를 위에 두고 있는 Content-addressable 파일 시스템이라고 정의한다. 뭔가 깔끔한 정의는 아니지만 이 말이 무슨 의미인가는 차차 알아가도록 하자.
+자 이제 본격적으로 살펴보자. 우선 Git은 기본적으로 Content-addressable 파일 시스템이고 그 위에 VCS 사용자 인터페이스가 있는 구조다. 뭔가 깔끔한 정의는 아니지만 이 말이 무슨 의미인가는 차차 알게 될 것이다.
 
 In the early days of Git (mostly pre 1.5), the user interface was much more complex because it emphasized this filesystem rather than a polished VCS. In the last few years, the UI has been refined until it’s as clean and easy to use as any system out there; but often, the stereotype lingers about the early Git UI that was complex and difficult to learn.
 
-Git의 초기 시절에는 (1.5 이전 버전) 훨씬 복잡한 사용자 인터페이스를 갖고 있었다. 틀이 잡힌 VCS가 아닌 파일 시스템을 강조한 점 때문이었다. 최근 몇년간 사용자 인터페이스는 여타 버전관리 시스템 만큼 깔끔한 사용자 인터페이스로 만들기 위해 다듬어져 왔다. 하지만 초기 시절의 배우기 어려운 인터페이스에 대한 선입견은 좀처럼 사라지지 않았다.
+Git의 초년기에는 (1.5 이전 버전) 사용자 인터페이스가 훨씬 복잡했었다. VCS가 아니라 파일 시스템을 강조했 기 때문이었다. 최근 몇년간 Git은 다른 VCS 처럼 쉽고 간결하게 사용자 인터페이스를 다듬어 졌다. 하지만 복잡하고 배우기 어렵다는 선입견은 여전하다.
 
 The content-addressable filesystem layer is amazingly cool, so I’ll cover that first in this chapter; then, you’ll learn about the transport mechanisms and the repository maintenance tasks that you may eventually have to deal with.
 
-Content-addressable 파일 시스템 계층은 정말 대단한 것이기 때문에 이번 장에서 가장 먼저 다루도록 한다. 그 이후에 Transport 원리와 가장 중심이 되는 저장소 관리 작업에 대한 내용을 다루도록 한다.
+Content-addressable 파일 시스템은 정말 대단한 것이기 때문에 가장 먼저 다룰 것이다. 그리고 나서 Transport 원리를 배우고 결국 저장소를 관리하는 법까지 배우게 될 것이다.
 
 ## Plumbing and Porcelain / Plumbing 명령과 Porcelain 명령 ##
 
 This book covers how to use Git with 30 or so verbs such as `checkout`, `branch`, `remote`, and so on. But because Git was initially a toolkit for a VCS rather than a full user-friendly VCS, it has a bunch of verbs that do low-level work and were designed to be chained together UNIX style or called from scripts. These commands are generally referred to as "plumbing" commands, and the more user-friendly commands are called "porcelain" commands.
 
-이 책에서 Git을 사용하기 위해 `checkout`, `branch`, `remote`와 같은 30여가지의 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷(도구모음)이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 이 명령어들은 Unix 스타일로 함께 연결되어 실행하거나 스크립트에서 호출될 수 있도록 디자인되었다. 이러한 저수준의 명령어들은 "Plumbing" 명령어라고 부르며, 좀 더 사용자 친화적인 명령어들은 "Porcelain" 명령어라고 부른다.
+이 책에서는 `checkout`, `branch`, `remote`와 같은 30여가지의 Git 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 명령어 여러개를 Unix 스타일로 함께 엮어서 실행하거나 스크립트에서 호출될 수 있도록 디자인됐다. 이러한 저수준의 명령어는 "Plumbing" 명령어라고 부르고 좀 더 사용자 친화적인 명령어는 "Porcelain" 명령어이라고 부른다.
 
 The book’s first eight chapters deal almost exclusively with porcelain commands. But in this chapter, you’ll be dealing mostly with the lower-level plumbing commands, because they give you access to the inner workings of Git and help demonstrate how and why Git does what it does. These commands aren’t meant to be used manually on the command line, but rather to be used as building blocks for new tools and custom scripts.
 
-이 책 앞의 8개의 장은 Porcelain 명령만을 사용한다. 하지만 이번장에서는 저수준의 Plumbing 명령을 주로 사용하게 될 것이다. 이 명령을 통해 Git의 내부 작업에 접근할 수 있으며 실제로 어떻게 또는 왜 그렇게 작동되는지 살펴볼 수 있기 때문이다. Plumbing 명령을 직접 커맨드라인에서 실행하기보다는 새로운 도구를 만들거나 사용자만의 스크립트를 작성할 때 끼워넣어 쓸 수 있다.
+이 책의 앞 8개 장은 Porcelain 명령만 사용했다. 하지만 이 장에서는 저수준의 Plumbing 명령을 주로 사용할 것이다. 이 명령으로 Git의 내부구조에 접근할 수 있고 실제로 왜, 그렇게 작동하는지도 살펴볼 수 있다. Plumbing 명령은 직접 커맨드라인에서 실행하기보다 새로운 도구를 만들거나 각자 필요한 스크립트를 작성할 때 사용한다.
 
 When you run `git init` in a new or existing directory, Git creates the `.git` directory, which is where almost everything that Git stores and manipulates is located. If you want to back up or clone your repository, copying this single directory elsewhere gives you nearly everything you need. This entire chapter basically deals with the stuff in this directory. Here’s what it looks like:
 
-새로 만든 디렉토리나 이미 여러 파일이 존재하고 있는 디렉토리에서 `git init` 명령을 실행하면 Git은 대부분의 Git 자료을 저장하고 관리하게 될 `.git` 디렉토리를 만든다. 저장소를 백업하거나 복사해놓으려면 이 디렉토리를 복사해 놓는 것이 거의 전부이다. 이 장의 대부분은 기본적으로 이 디렉토리 안의 내용들을 다루고 있다. 디렉토리는 다음과 같은 구조이다:
+새로 만든 디렉토리나 이미 파일이 있는 디렉토리에서 `git init` 명령을 실행하면 Git은 데이터를 저장하고 관리하는 `.git` 디렉토리를 만든다. 이 디렉토리를 복사하기만 해도 저장소가 백업된다. 이 장은 기본적으로 이 디렉토리에 대한 내용들을 다루고 있다. 디렉토리 구조는 다음과 같다:
 
-	$ ls 
+	$ ls
 	HEAD
 	branches/
 	config
@@ -43,18 +44,18 @@ When you run `git init` in a new or existing directory, Git creates the `.git` d
 
 You may see some other files in there, but this is a fresh `git init` repository — it’s what you see by default. The `branches` directory isn’t used by newer Git versions, and the `description` file is only used by the GitWeb program, so don’t worry about those. The `config` file contains your project-specific configuration options, and the `info` directory keeps a global exclude file for ignored patterns that you don’t want to track in a .gitignore file. The `hooks` directory contains your client- or server-side hook scripts, which are discussed in detail in Chapter 6.
 
-파일이 몇개 있어 빈 디렉토리는 아니지만 실제로 `git init`을 하고 난 직후의 기본적인 새 저장소의 모습이다. `branches` 디렉토리는 최근 Git 버전에서는 사용하지 않는다. `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용한다. `config` 파일은 프로젝트에 관련된 설정 옵션을 담고 있으며, `info` 디렉토리는 .gitignore 파일에 기록하지 않고 프로젝트 전체에 적용되는 포함하지 않을 파일이나 무시할 파일 목록을 설정한다. `hook` 디렉토리는 클라이언트나 서버측의 훅 스크립트를 담고 있으며 관련 내용은 6장에서 다루었다.
+파일이 몇개 있어 빈 디렉토리는 아니지만 실제로 `git init`을 하고 난 직후의 기본적인 새 저장소의 모습이다. `branches` 디렉토리는 Git의 최신 버전에서 사용하지 않고 `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용하기 때문에 이 둘은 몰라도 된다. `config` 파일은 해당 프로젝트에만 적용되는 설정 옵션이 들어 있고, `info` 디렉토리는 .gitingore 파일 처럼 무시할 파일의 패턴을 적어 두는 곳이다. 하지만 .gitignore 파일과는 달리 Git으로 관리되지 않는다. `hook` 디렉토리는 클라이언트 훅이나 서버 훅을 넣는다. 관련 내용은 7장에서 다루었다.
 
 This leaves four important entries: the `HEAD` and `index` files and the `objects` and `refs` directories. These are the core parts of Git. The `objects` directory stores all the content for your database, the `refs` directory stores pointers into commit objects in that data (branches), the `HEAD` file points to the branch you currently have checked out, and the `index` file is where Git stores your staging area information. You’ll now look at each of these sections in detail to see how Git operates.
 
-이제 네 가지 항목이 남았는데 모두 중요한 항목들이다. `HEAD`와 `index`파일 `objects`와 `refs` 디렉토리가 남았다. 이 네 항목이 Git의 중심을 이룬다. `objects` 디렉토리는 데이터베이스로서 모든 컨텐트 데이터를 저장하고 있다. `refs` 디렉토리는 커밋 객체의 포인터(Branch)를 저장하고 있다. `HEAD` 파일은 현재 Checkout한 브랜치를 가리키고 있으며 `index` 파일은 Stage 영역의 정보를 저장하는 곳이다. Git이 어떻게 동작하는지 알아보기 위해 이 네가지 항목을 자세히 살펴보도록 한다.
+이제 네 가지 항목이 남았는데 모두 중요한 항목들이다. `HEAD`와 `index` 파일, `objects`와 `refs` 디렉토리가 남았다. 이 네 항목이 Git의 핵심이다. `objects` 디렉토리는 모든 컨텐트를 저장하는 데이터베이스이다. `refs` 디렉토리에는 커밋 개체의 포인터를 저장한다. `HEAD` 파일은 현재 Checkout한 브랜치를 가리키고 `index` 파일은 Staging Area의 정보를 저장한다. 이 네가지 항목을 자세히 살펴보면 Git이 어떻게 동작하는지 알게 될 것이다.
 
-## Git Objects / Git 객체 ##
+## Git Objects / Git 개체 ##
 
 Git is a content-addressable filesystem. Great. What does that mean?
 It means that at the core of Git is a simple key-value data store. You can insert any kind of content into it, and it will give you back a key that you can use to retrieve the content again at any time. To demonstrate, you can use the plumbing command `hash-object`, which takes some data, stores it in your `.git` directory, and gives you back the key the data is stored as. First, you initialize a new Git repository and verify that there is nothing in the `objects` directory:
 
-Git은 Content-addressible 파일시스템이다. 대단하지 않은가? 이게 무슨 말이냐 하면 Git은 단순한 Key-Value 데이터 저장소라는 것이다. 어떤 형식의 데이터라도 Value로 집어넣을 수 있고 그에 해당하는 Key를 이용하여 언제든지 데이터를 가져올 수 있다. Plumbing 명령 `hash-object`를 사용하여 어떻게 작동하는지 살펴본다. `hash-object`는 어떤 데이터를 받아서 `.git` 디렉토리에 저장을 한다. 우선 새 Git 저장소를 만들고 아무런 데이터도 `objects` 디렉토리에 없는 것을 확인해보자:
+Git은 Content-addressible 파일시스템이다. 대단하지 않은가? 이게 무슨 말이냐 하면 Git은 단순한 Key-Value 데이터 저장소라는 것이다. 어떤 형식의 데이터라도 집어넣을 수 있고 해당 Key로 언제든지 데이터를 다시 가져올 수 있다. Plumbing 명령어 `hash-object`에 데이터를 주면 `.git` 디렉토리에 저장하고 그 key를 알려준다. 우선 Git 저장소를 새로 만들고 `objects` 디렉토리에 아무 것도 없는지 확인한다:
 
 	$ mkdir test
 	$ cd test
@@ -69,32 +70,32 @@ Git은 Content-addressible 파일시스템이다. 대단하지 않은가? 이게
 
 Git has initialized the `objects` directory and created `pack` and `info` subdirectories in it, but there are no regular files. Now, store some text in your Git database:
 
-Git은 `objects` 디렉토리 아래에 `pack`과 `info`라는 하위 디렉토리를 만들어놓는 초기화를 했다. 디렉토리만 있을 뿐 파일은 아무것도 없다. Git 데이터베이스에 텍스트 파일을 저장해보자:
+Git은 `objects` 디렉토리를 만들고 그 밑에 `pack`과 `info` 디렉토리도 만들었다. 그 디렉토리는 빈 디렉토리일 뿐 파일은 아무것도 없다. Git 데이터베이스에 텍스트 파일을 저장해보자:
 
 	$ echo 'test content' | git hash-object -w --stdin
 	d670460b4b4aece5915caf5c68d12f560a9fe3e4
 
 The `-w` tells `hash-object` to store the object; otherwise, the command simply tells you what the key would be. `--stdin` tells the command to read the content from stdin; if you don’t specify this, `hash-object` expects the path to a file. The output from the command is a 40-character checksum hash. This is the SHA-1 hash — a checksum of the content you’re storing plus a header, which you’ll learn about in a bit. Now you can see how Git has stored your data:
 
-`hash-object` 명령은 데이터가 어떤 Key를 갖게 될지 Key 이름을 알려준다. `-w` 옵션은 에 데이터를 저장하도록 지시하며, `--stdin` 옵션은 stdin 표준 입력을 통해 데이터를 읽어들이도록 지시하는 옵션이다. 이 옵션을 지정하지 않으면 데이터를 읽을 파일의 경로가 입력되기를 기대할 것이다. `hash-object` 명령의 출력 내용은 40 글자 길이의 체크섬 해시다. 이 해시 데이터는 SHA-1 해시이며 헤더 정보를 포함하는 컨텐트 데이터에 대한 해시값이다. 헤더 정보는 차차 자세히 살펴보기로 한다. 이제 Git이 어떻게 데이터를 저장하는지를 알아보았다:
+이 명령은 표준입력으로 들어 오는 데이터를 저장하는 예이다. `-w` 옵션을 줘야 저장하고 `-w`가 없으면 저장하지 않고 key만 보여준다. 그리고 `--stdin` 옵션을 주면 표준입력으로 데이터를 읽도록 지시하는 것이다. 이 옵션이 없으면 파일 경로를 알려줘야 한다. `hash-object` 명령이 출력하는 것은 40 자 길이의 체크섬 해시다. 이 해시는 헤더 정보와 데이터 모두에 대한 SHA-1 해시이다. 헤더 정보는 차차 자세히 살펴볼 것이다. 이제 Git이 저장한 데이터를 알아 보자:
 
 	$ find .git/objects -type f 
 	.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4
 
 You can see a file in the `objects` directory. This is how Git stores the content initially — as a single file per piece of content, named with the SHA-1 checksum of the content and its header. The subdirectory is named with the first 2 characters of the SHA, and the filename is the remaining 38 characters.
 
-`objects` 디렉토리에 파일이 하나 새로 생긴것을 볼 수 있다. 기본적으로 이런식으로 Git은 데이터를 하나의 파일로 저장을 하며 데이터와 헤더 정보의 SHA-1 체크섬으로 이름짓는다. 하위 디렉토리 이름은 해시의 처음 두 글자를 따서 사용을 하며 나머지 38 글자는 파일의 이름이 된다.
+`objects` 디렉토리에 파일이 하나 새로 생겼다. Git은 데이터를 저장하는 방법은 파일을 하나 만들고 그 파일에 저장한다. 그리고 데이터와 헤더로 생성한 SHA-1 체크섬으로 파일 이름을 짓는다. 해시의 처음 두 글자를 따서 디렉토리 이름을 짓고 나머지 38 글자는 파일 이름이 된다.
 
 You can pull the content back out of Git with the `cat-file` command. This command is sort of a Swiss army knife for inspecting Git objects. Passing `-p` to it instructs the `cat-file` command to figure out the type of content and display it nicely for you:
 
-`cat-file` 명령으로 저장한 데이터를 불러올 수 있다. 이 명령은 Git 객체를 살펴보고 싶을 때 맥가이버칼 처럼 사용할 수 있다. `cat-file` 명령에 `-p` 옵션을 사용하여 적당한 형식으로 출력하도록 지시할 수 있으며, 그 결과는 다음과 같다:
+`cat-file` 명령으로 저장한 데이터를 불러올 수 있다. 이 명령은 Git 개체를 살펴보고 싶을 때 맥가이버칼 처럼 사용할 수 있다. `cat-file` 명령에 `-p` 옵션을 주면 파일의 내용이 출력된다:
 
 	$ git cat-file -p d670460b4b4aece5915caf5c68d12f560a9fe3e4
 	test content
 
 Now, you can add content to Git and pull it back out again. You can also do this with content in files. For example, you can do some simple version control on a file. First, create a new file and save its contents in your database:
 
-다시 한 번 Git 저장소에 데이터를 추가하고 불러와 보도록 하자. 이번에는 파일을 사용하여 버전관리를 적용하여 데이터를 추가해보도록 한다. 우선 새 파일을 하나 만들고 Git 저장소에 저장한다:
+다시 한 번 데이터를 Git 저장소에 추가하고 불러와 보자. 버전관리하는 것을 이해하기 좋도록 이번에는 파일을 만들어서 저장해 보자. 우선 새 파일을 하나 만들고 Git 저장소에 저장한다:
 
 	$ echo 'version 1' > test.txt
 	$ git hash-object -w test.txt 
@@ -102,7 +103,7 @@ Now, you can add content to Git and pull it back out again. You can also do this
 
 Then, write some new content to the file, and save it again:
 
-그리고 파일의 내용을 업데이트하고 다시 저장소에 저장을 한다:
+그리고 파일을 수정하고 다시 저장한다:
 
 	$ echo 'version 2' > test.txt
 	$ git hash-object -w test.txt 
@@ -110,7 +111,7 @@ Then, write some new content to the file, and save it again:
 
 Your database contains the two new versions of the file as well as the first content you stored there:
 
-이제 데이터베이스에는 두가지 버전의 데이터가 저장되어 있다:
+이제 데이터베이스에는 데이터가 두가지 버전으로 저장돼 있다:
 
 	$ find .git/objects -type f 
 	.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a
@@ -119,7 +120,7 @@ Your database contains the two new versions of the file as well as the first con
 
 Now you can revert the file back to the first version
 
-첫 번째 버전으로 파일의 내용을 되돌리려면 다음과같이 한다:
+파일의 내용을 첫 번째 버전으로 되돌리려면 다음과 같이 한다:
 
 	$ git cat-file -p 83baae61804e65cc73a7201a7252750c76066a30 > test.txt 
 	$ cat test.txt 
@@ -127,7 +128,7 @@ Now you can revert the file back to the first version
 
 or the second version:
 
-두 번째 버전으로 파일의 내용을 적용하려면 다음과 같이 한다:
+다시 두 번째 버전을 적용하려면 다음과 같이 한다:
 
 	$ git cat-file -p 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a > test.txt 
 	$ cat test.txt 
@@ -135,16 +136,16 @@ or the second version:
 
 But remembering the SHA-1 key for each version of your file isn’t practical; plus, you aren’t storing the filename in your system — just the content. This object type is called a blob. You can have Git tell you the object type of any object in Git, given its SHA-1 key, with `cat-file -t`:
 
-하지만 데이터 저장에 사용한 SHA-1 키는 외워서 사용하기에는 쉽지 않다. 게다가 원래 파일의 이름도 저장해놓지도 않았다. 단지 파일의 컨텐트만 저장했을 뿐이다. 이런 종류의 객체를 Blob이라고 부른다. 주어진 SHA-1 키로 Git에게 객체의 타입이 어떤지 물어볼 수 있는데 `cat-file -t` 명령을 사용한다:
+파일의 SHA-1 키를 외워서 사용하기기는 정말 쉽지 않다. 게다가 원래 파일의 이름도 저장하지 않았다. 단지 파일 내용만 저장했을 뿐이다. 이런 종류의 개체를 Blob이라고 부른다. `cat-file -t` 명령으로 해당 개체가 무슨 타입인지 확인할 수 있다:
 
 	$ git cat-file -t 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
 	blob
 
-### Tree Objects / Tree 객체 ###
+### Tree Objects / Tree 개체 ###
 
 The next type you’ll look at is the tree object, which solves the problem of storing the filename and also allows you to store a group of files together. Git stores content in a manner similar to a UNIX filesystem, but a bit simplified. All the content is stored as tree and blob objects, with trees corresponding to UNIX directory entries and blobs corresponding more or less to inodes or file contents. A single tree object contains one or more tree entries, each of which contains a SHA-1 pointer to a blob or subtree with its associated mode, type, and filename. For example, the most recent tree in the simplegit project may look something like this:
 
-다음으로 살펴볼 것은 Tree 객체이다. 이 Tree 객체는 앞서 파일이름을 저장하지 못했던 문제를 해결하며 여러 파일들을 함께 저장하는 방법도 제공한다. Git은 컨텐트를 유닉스 파일 시스템과 비슷한 방식으로 저장하지만 좀 더 단순하다. 모든 컨텐트는 Tree나 Blob 객체로 저장이 되며 Tree는 유닉스의 디렉토리 항목, Blob은 Inode나 파일 컨텐트에 대응된다. 하나의 Tree 객체는 하나 이상의 Tree 항목을 포함하고 있으며 Tree 항목의 각 항목은 Blob 객체나 Subtree(하위 Tree)의 SHA-1 포인터를 갖고 있으며 추가적으로 파일 모드, 객체 타입, 파일이름을 갖고 있다. 예를 들어 최신 simplegit 프로젝트의 모습을 살펴보면 다음과 같다:
+다음으로 살펴볼 것은 Tree 개체이다. 이 Tree 개체로 파일 이름을 저장할 수 있고 파일을 여러개를 한번에 저장할 수도 있다. Git은 유닉스 파일 시스템과 비슷한 방법으로 저장하지만 좀 더 단순하다. 모든 것을 Tree와 Blob 개체로 저장한다. Tree는 유닉스의 디렉토리에 대응되고 Blob은 Inode나 일반 파일에 대응된다. Tree 개체 하나는 항목을 여러개 가질 수 있다. 그리고 그 항목은 Blob 개체나 하위 Tree 개체를 가리키는 SHA-1 포인터, 파일 모드, 개체 타입, 파일 이름을 갖고 있다. simplegit 프로젝트의 마지막 Tree 개체를 살펴 보자:
 
 	$ git cat-file -p master^{tree}
 	100644 blob a906cb2a4a904a152e80877d4088654daad0c859      README
@@ -153,32 +154,32 @@ The next type you’ll look at is the tree object, which solves the problem of s
 
 The `master^{tree}` syntax specifies the tree object that is pointed to by the last commit on your `master` branch. Notice that the `lib` subdirectory isn’t a blob but a pointer to another tree:
 
-`master^{tree}` 구문은 `master` 브랜치에서 마지막 커밋이 가리키고 있는 Tree 객체를 지정하고 있다. `lib` 디렉토리는 Blob 형식이 아니기 때문에 다른 Tree 객체를 가리키고 있다는 점을 주목해보자.
+`master^{tree}` 구문은 `master` 브랜치가 가리키는 Tree 개체를 말한다. `lib` 디렉토리는 Blob이 아니고 다른 Tree 개체를 가리킨다는 점을 주목하자:
 
 	$ git cat-file -p 99f1a6d12cb4b6f19c8655fca46c3ecf317074e0
 	100644 blob 47c6340d6459e05787f644c2447d2595f5d3a54b      simplegit.rb
 
 Conceptually, the data that Git is storing is something like Figure 9-1.
 
-Git이 데이터를 저장하고 있는 모습은 대강 그림 9-1과 같다.
+Git이 저장하는 데이터는 대강 그림 9-1과 같다.
 
 Insert 18333fig0901.png 
 Figure 9-1. 단순화한 Git 데이터 모델.
 
 You can create your own tree. Git normally creates a tree by taking the state of your staging area or index and writing a tree object from it. So, to create a tree object, you first have to set up an index by staging some files. To create an index with a single entry — the first version of your text.txt file — you can use the plumbing command `update-index`. You use this command to artificially add the earlier version of the test.txt file to a new staging area. You must pass it the `--add` option because the file doesn’t yet exist in your staging area (you don’t even have a staging area set up yet) and `--cacheinfo` because the file you’re adding isn’t in your directory but is in your database. Then, you specify the mode, SHA-1, and filename:
 
-사용자 나름의 Tree 객체를 만들수도 있다. Git은 일반적으로 Stage 영역의 상태나 Index 기반으로 Tree 객체를 만들고 기록하고 한다. 그렇기 때문에 Tree 객체를 만들기 위해서는 Stage 영역에 파일을 추가하여 Index를 생성하는 작업을 먼저 해야 한다. 우선 첫 번째 버전의 test.txt 파일 하나의 항목을 가지는 Index를 만들기 위해 Plumbing 명령 `update-index`를 사용한다. 새 Stage 영역에 인위적으로 앞서 저장한 버전의 test.txt 파일을 추가한다. 아직 Stage 영역에 파일이 추가되어 있지 않기 때문에 `--add` 옵션을 반드시 추가해주어야 한다 (사실 아직 Stage 영역도 설정되어 있지 않은 상태이다). 또한 저장소 데이터베이스에는 존재하지만 디렉토리에는 사실 존재하지 않는 파일이기 땜ㄴ에 `--cacheinfo` 옵션을 사용한다. 그리고 파일 모드, SHA-1 해시, 파일 이름을 지정해준다:
+자신만의 Tree 개체를 만들 수도 있다. Git은 일반적으로 Staging Area(Index)의 상태 대로 Tree 개체를 만들고 기록하고 한다. 그래서 Tree 개체를 만들려면 Staging Area에 파일을 추가해서 Index를 만들어 줘야 한다. 우선 Plumbing 명령 `update-index`로 `test.txt` 파일만 들어 있는 Index를 만든다. 이 명령으로 test.txt 파일을 인위적으로 Staging Area에 추가하는 것이다. 아직 Staging Area에 없는 파일 이기 때문에 `--add` 옵션을 꼭 줘야 한다(사실 아직 Staging Area도 설정하지 않았다). 그리고 디렉토리에 있는 파일이 아니라 데이터베이스에만 있는 파일을 추가하는 것이기 때문에 `--cacheinfo` 옵션이 필요하다. 그리고 파일 모드, SHA-1 해시, 파일 이름을 지정해준다:
 
 	$ git update-index --add --cacheinfo 100644 \
 	  83baae61804e65cc73a7201a7252750c76066a30 test.txt
 
 In this case, you’re specifying a mode of `100644`, which means it’s a normal file. Other options are `100755`, which means it’s an executable file; and `120000`, which specifies a symbolic link. The mode is taken from normal UNIX modes but is much less flexible — these three modes are the only ones that are valid for files (blobs) in Git (although other modes are used for directories and submodules).
 
-위의 상황에서 파일 모드는 일반적일 파일을 나타내는 `100644`로 지정했다. 실행파일이라면 `100755`로 지정할 수 있고, 심볼릭 링크라면 `120000`으로 지정할 수 있다. 이런 파일 모드는 일반적인 유닉스 모드에서 가져오긴 하지만 모드의 모든 기능을 사용하지는 않는다. Git에서 파일에 대한 모드로서 방금 다룬 세 가지 모드만 사용한다(디렉토리나 서브모듈은 다른 모드를 사용한다).
+여기서 파일 모드는 보통의 파일을 나타내는 `100644`로 지정했다. 실행파일이라면 `100755`로 지정하고, 심볼릭 링크라면 `120000`으로 지정한다. 이런 파일 모드는 유닉스에서 가져오긴 했지만 전부 가져오진 않았다. Blob 파일에는 이 세 가지 모드만 사용한된다. 디렉토리나 서브모듈에는 다른 모드를 사용한다.
 
 Now, you can use the `write-tree` command to write the staging area out to a tree object. No `-w` option is needed — calling `write-tree` automatically creates a tree object from the state of the index if that tree doesn’t yet exist:
 
-이제 `write-tree` 명령으로 Stage 영역을 Tree 객체로 기록할 수 있는 상황이 되었다. `write-tree` 명령은 Tree 객체가 없는 경우 자동으로 생성하므로 `-w` 옵션이 필요하지는 않다:
+이제 Staging Area을 Tree 개체로 저장하려면 `write-tree` 명령을 사용한다. `write-tree` 명령은 Tree 개체가 없으면 자동으로 생성하므로 `-w` 옵션이 필요 없다:
 
 	$ git write-tree
 	d8329fc1cc938780ffdd9f94e0d364e0ea74f579
@@ -187,14 +188,14 @@ Now, you can use the `write-tree` command to write the staging area out to a tre
 
 You can also verify that this is a tree object:
 
-Tree 객체라는 것을 다음 명령으로 확인해볼 수도 있다:
+이 개체가 Tree 개체라는 것을 다음 명령으로 확인한다:
 
 	$ git cat-file -t d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	tree
 
 You’ll now create a new tree with the second version of test.txt and a new file as well:
 
-test.txt 파일의 두 번째 버전에 대한 새 Tree 객체를 만들어보자:
+파일을 새로 하나 추가하고 test.txt 파일의 두 번째 버전을 만들어 새 Tree 개체를 만들어 보자:
 
 	$ echo 'new file' > new.txt
 	$ git update-index test.txt 
@@ -202,9 +203,10 @@ test.txt 파일의 두 번째 버전에 대한 새 Tree 객체를 만들어보�
 
 Your staging area now has the new version of test.txt as well as the new file new.txt. Write out that tree (recording the state of the staging area or index to a tree object) and see what it looks like:
 
-새 파일인 new.txt 파일 외에도 test.txt 파일의 새 버전까지 Stage 영역에 추가되었다. 현재 Stage 영역의 Index와 그 내용을 새로운 Tree 객체로 기록하고 어떤 모습인지 확인해보자:
+새 파일인 new.txt와 새 버전의 test.txt 파일까지 Staging Area에 추가했다. 현재 상태의 Staging Area를 새로운 Tree 개체로 기록하고 어떻게 보이는지 살펴보자:
 
-(번역 확인: 앞서 write-tree에서 -w 옵션이 불필요 하다는 말이 `hash-object -w` 로 기록하지 않아도 새로 blob 데이터를 만든다는 이야기인지, Tree 객체의 기록에 대한 이야기인지 확인이 필요하다)
+(번역 확인: 앞서 write-tree에서 -w 옵션이 불필요 하다는 말이 `hash-object -w` 로 기록하지 않아도 새로 blob 데이터를 만든다는 이야기인지, Tree 개체의 기록에 대한 이야기인지 확인이 필요하다)
+(번역 확인: hash-object는 -w를 줘야 진짜로 저장하지만 write-tree는 그런거 없어도 진짜로 저장한다는 의미로 생각함, blob 개체도 tree 개체도 저장한다는 의미인 것 같고 이는 -w의 유무와 관계 없어보임 )
 
 	$ git write-tree
 	0155eb4229851634a0f03eb265b69f5a2d56f341
@@ -214,7 +216,7 @@ Your staging area now has the new version of test.txt as well as the new file ne
 
 Notice that this tree has both file entries and also that the test.txt SHA is the "version 2" SHA from earlier (`1f7a7a`). Just for fun, you’ll add the first tree as a subdirectory into this one. You can read trees into your staging area by calling `read-tree`. In this case, you can read an existing tree into your staging area as a subtree by using the `--prefix` option to `read-tree`:
 
-새 두 파일이 Tree의 항목에 나타는 것을 확인해보자. 또한 test.txt의 해시값이 앞서 만든 "version 2"에 대한 해시값(`1f7a7a`)인 것을 확인할 수 있다. 단지 재미로 처음에 만들었던 Tree 객체를 현재 버전의 하위 디렉토리로 만들어보자. Tree 객체를 읽어 Stage 영역에 추가하기 위해 `read-tree` 명령을 사용한다. 지금의 상황처럼 하위 디렉토리로 Tree를 만들려면 `--prefix` 옵션을 사용할 수 있다:
+이 Tree 개체는 파일이 두 개 있고 test.txt 파일의 SHA 값도 두번째 버전인 `1f7a7a1`이다. 재미난 걸 해보자. 처음에 만든 Tree 개체를 하위 디렉토리로 만들어 보자. `read-tree` 명령으로 Tree 개체를 읽어 Staging Area에 추가할 수 있다. Tree 개체를 하위 디렉토리로 추가하려면 `--prefix` 옵션을 준다:
 
 	$ git read-tree --prefix=bak d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	$ git write-tree
@@ -226,27 +228,27 @@ Notice that this tree has both file entries and also that the test.txt SHA is th
 
 If you created a working directory from the new tree you just wrote, you would get the two files in the top level of the working directory and a subdirectory named `bak` that contained the first version of the test.txt file. You can think of the data that Git contains for these structures as being like Figure 9-2.
 
-이렇게 기록한 새 Tree 객체로 새로운 작업 디렉토리를 만들어내면 가장 상위 디렉토리에 두 파일이 위치하고 그 아래에 `bak`라는 이름을 가진 첫 번째 버전의 파일을 포함하고 있는 하위 디렉토리가 만들어질 것이다. 그림 9-2로 Git이 어떤 구조로 데이터를 저장하고 있는지 나타낼 수 있다.
+지금 만든 Tree 개체로 Working Directory를 만들면 파일이 두 개와 `bak`이라는 하위 디렉토리가 있을 것이다. 그리고 `bak` 디렉토리 안에는 test.txt 파일의 제일 첫 버전이 들어 있을 것이다. Git은 그림 9-2 과 같은 구조로 데이터를 저장한다고 생각하면 된다.
 
 Insert 18333fig0902.png 
-Figure 9-2. Git이 바라보는 데이터 구조.
+Figure 9-2. Git 데이터 구조.
 
-### Commit Objects / 커밋 객체 ###
+### Commit Objects / 커밋 개체 ###
 
 You have three trees that specify the different snapshots of your project that you want to track, but the earlier problem remains: you must remember all three SHA-1 values in order to recall the snapshots. You also don’t have any information about who saved the snapshots, when they were saved, or why they were saved. This is the basic information that the commit object stores for you.
 
-각기 다른 Snapshot에 대한 Tree 객체가 세 개 만들어졌다. 하지만 이 Snapshot을 불러내기 위해서 SHA-1 Value를 기억하고 있어야 하는 앞서 살펴본 문제가 남아있다. 또한 저장된 Snapshot에 대한 어떠한 추가정보 즉 왜 또는 어떻게 저장되었는가에 대한 정보가 없다. 이런 기본적인 정보는 Commit 객체에 저장된다:
+각기 다른 Snapshot을 나태내는 Tree 개체를 세 개 만들었다. 하지만 여전히 이 Snapshot을 불러 내려면 SHA-1 값을 기억하고 있어야 한다. 또한 Snapshot을 누가, 언제, 왜 저장했는지에 대한 정보가 아예 없다. 이런 정보는 Commit 개체에 저장된다:
 
 To create a commit object, you call `commit-tree` and specify a single tree SHA-1 and which commit objects, if any, directly preceded it. Start with the first tree you wrote:
 
-Commit 객체를 생성하기 위해 `commit-tree` 명령에 Tree 객체의 SHA-1 ID를 함께 넘겨준다 (번역확인). 앞서 저장한 첫 번째 Tree를 가지고 실행해보면 아래와 같다:
+Commit 개체는`commit-tree` 명령으로 만든다. 이 명령에 Commit 개체에 대한 설명과 Tree 개체의 SHA-1 값 한 개를 넘겨준다. 앞서 저장한 첫 번째 Tree를 가지고 만들어보면 아래와 같다:
 
 	$ echo 'first commit' | git commit-tree d8329f
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d
 
 Now you can look at your new commit object with `cat-file`:
 
-새로 생긴 Commit 객체를 `cat-file` 명령으로 확인해보자:
+새로 생긴 Commit 개체를 `cat-file` 명령으로 확인해보자:
 
 	$ git cat-file -p fdf4fc3
 	tree d8329fc1cc938780ffdd9f94e0d364e0ea74f579
@@ -257,11 +259,11 @@ Now you can look at your new commit object with `cat-file`:
 
 The format for a commit object is simple: it specifies the top-level tree for the snapshot of the project at that point; the author/committer information pulled from your `user.name` and `user.email` configuration settings, with the current timestamp; a blank line, and then the commit message.
 
-Commit 객체의 형식은 간단하다. 해당 시점의 Snapshot에서 최상단 Tree를 하나 가리키고 있으며 `user.name`과 `user.email` 설정에서 읽은 Author/Committer 정보, 시간정보, 그리고 한 줄 비운 다음 커밋 메시지를 갖고 있다.
+Commit 개체의 형식은 간단하다. 해당 Snapshot에서 최상단 Tree를 하나 가리키고 `user.name`과 `user.email` 설정에서 가져온 Author/Committer 정보, 시간정보, 그리고 한 줄 띄운 다음 커밋 메시지가 들어 있다.
 
 Next, you’ll write the other two commit objects, each referencing the commit that came directly before it:
 
-다음 두 커밋 객체는 이전의 커밋 객체를 가리키도록 다음과 같이 생성한다:
+이제 Commit 개체를 두 개 더 만들어 보자. 각 Commit 개체는 이전 개체를 가리키도록 한다:
 
 	$ echo 'second commit' | git commit-tree 0155eb -p fdf4fc3
 	cac0cab538b970a37ea1e769cbbde608743bc96d
@@ -270,7 +272,7 @@ Next, you’ll write the other two commit objects, each referencing the commit t
 
 Each of the three commit objects points to one of the three snapshot trees you created. Oddly enough, you have a real Git history now that you can view with the `git log` command, if you run it on the last commit SHA-1:
 
-각 세 개의 Commit 객체는 Snapshot의 Tree를 하나씩 가리키고 있다. 이상해보이긴 해도 진짜 Git 히스토리 정보가 만들어진 것이다. `git log` 명령을 실행해 보면 아래와 같이 출력한다:
+세 Commit 개체는 각각 해당 Snapshot을 나타내는 Tree 개체를 하나씩 가리키고 있다. 이상해 보이겠지만 진짜 Git 히스토리를 만들 었다. 마지막 Commit 개체의 SHA-1 값을 주고 `git log` 명령을 실행하면 아래와 같이 출력한다:
 
 	$ git log --stat 1a410e
 	commit 1a410efbd13591db07496601ebc7a059dd55cfe9
@@ -303,7 +305,7 @@ Each of the three commit objects points to one of the three snapshot trees you c
 
 Amazing. You’ve just done the low-level operations to build up a Git history without using any of the front ends. This is essentially what Git does when you run the `git add` and `git commit` commands — it stores blobs for the files that have changed, updates the index, writes out trees, and writes commit objects that reference the top-level trees and the commits that came immediately before them. These three main Git objects — the blob, the tree, and the commit — are initially stored as separate files in your `.git/objects` directory. Here are all the objects in the example directory now, commented with what they store:
 
-놀랍지 않은가! 방금 우리는 저수준의 명령으로 버전관리 명령을 사용하지 않고 Git 히스토리를 만들어낸 것이다. 위의 작업들이 `git add`와 `git commit` 명령을 실행했을 때 Git이 실제로 하는 일이다. 변경된 파일에 대한 Blob을 저장하고 Index를 수정하여 Tree 객체를 기록하고 Commit 객체를 작성한다. 이 세가지 객체, 즉 Blob, Tree, Commit 객체가 Git의 주요 객체가 되겠다. 기본적으로 이 객체들은 각각 `.git/objects` 디렉토리에 저장된다. 위의 예에서 생성된 모든 객체들의 모습은 다음과 같을 것이다:
+놀랍지 않은가! 방금 우리는 고수준 명령어 없이 저수준의 명령으로만 Git 히스토리를 만들었다. 지금 한 일이 `git add`와 `git commit` 명령을 실행했을 때 Git 내부에서 일어나는 일이다. Git은 변경된 파일을 Blob 개체로 저장하고 현 Index에 따라서 Tree 개체를 만든다. 그리고 이전 Commit 개체와 최상위 Tree 개체를 참고해서 Commit 개체를 만든다. 즉 Blob, Tree, Commit 개체가 Git의 주요 개체이고 이 개체들은 각각 `.git/objects` 디렉토리에 저장된다. 위의 예에서 생성한 개체는 다음과 같다:
 
 	$ find .git/objects -type f
 	.git/objects/01/55eb4229851634a0f03eb265b69f5a2d56f341 # tree 2
@@ -319,14 +321,16 @@ Amazing. You’ve just done the low-level operations to build up a Git history w
 
 If you follow all the internal pointers, you get an object graph something like Figure 9-3.
 
-내부의 포인터들을 따라가 보면 그림 9-3과 같은 모양의 그래프를 그릴 수 있다.
+내부의 포인터를 따라가면 그림 9-3과 같은 그래프가 그려진다.
 
 Insert 18333fig0903.png 
-Figure 9-3. Git 저장소 내의 모든 객체.
+Figure 9-3. Git 저장소 내의 모든 개체.
 
-### Object Storage / 객체 저장소 ###
+### Object Storage / 개체 저장소 ###
 
 I mentioned earlier that a header is stored with the content. Let’s take a minute to look at how Git stores its objects. You’ll see how to store a blob object — in this case, the string "what is up, doc?" — interactively in the Ruby scripting language. You can start up interactive Ruby mode with the `irb` command:
+
+내용과 함께 헤더도 저장된다고 얘기 했었다. 잠시 Git이 개체를 어떻게 저장하는지 살펴보자. "what is up, doc?" 스트링을 가지고 대화형 Ruby 쉘 `irb` 명령어로 흉내 내 볼 것이다:
 
 	$ irb
 	>> content = "what is up, doc?"
@@ -334,10 +338,14 @@ I mentioned earlier that a header is stored with the content. Let’s take a min
 
 Git constructs a header that starts with the type of the object, in this case a blob. Then, it adds a space followed by the size of the content and finally a null byte:
 
+Git은 개체의 타입을 시작으로 헤더를 만든다. 그 다음에 스페이스 문자 하나, 내용의 크기, 마지막에 null 문자가 추가된다:
+
 	>> header = "blob #{content.length}\0"
 	=> "blob 16\000"
 
 Git concatenates the header and the original content and then calculates the SHA-1 checksum of that new content. You can calculate the SHA-1 value of a string in Ruby by including the SHA1 digest library with the `require` command and then calling `Digest::SHA1.hexdigest()` with the string:
+
+Git은 헤더와 원래 내용을 붙이고 붙인 것으로 SHA-1 체크섬을 계산한다. `require`로 SHA1 라이브러리를 가져다가 Ruby에서도 흉내낼 수 있다. `require`로 라이브러리를 포함시키고 나서 `Digest::SHA1.hexdigest()`를 호출한다:
 
 	>> store = header + content
 	=> "blob 16\000what is up, doc?"
@@ -348,12 +356,16 @@ Git concatenates the header and the original content and then calculates the SHA
 
 Git compresses the new content with zlib, which you can do in Ruby with the zlib library. First, you need to require the library and then run `Zlib::Deflate.deflate()` on the content:
 
+Git은 또 zlib으로 내용을 압축한다. Ruby에도 zlib 라이브러리가 있으니 Ruby에서도 할 수 있다. 라이브러리를 포함시키고 `Zlib::Deflate.deflate()`를 호출한다:
+
 	>> require 'zlib'
 	=> true
 	>> zlib_content = Zlib::Deflate.deflate(store)
 	=> "x\234K\312\311OR04c(\317H,Q\310,V(-\320QH\311O\266\a\000_\034\a\235"
 
 Finally, you’ll write your zlib-deflated content to an object on disk. You’ll determine the path of the object you want to write out (the first two characters of the SHA-1 value being the subdirectory name, and the last 38 characters being the filename within that directory). In Ruby, you can use the `FileUtils.mkdir_p()` function to create the subdirectory if it doesn’t exist. Then, open the file with `File.open()` and write out the previously zlib-compressed content to the file with a `write()` call on the resulting file handle:
+
+마지막으로 zlib으로 압축한 내용을 개체로 저장한다. SHA-1 값 중에서 맨 앞에 있는 두 자를 가져다 하위 디렉토리 이름으로 사용하고 나머지 38 자를 그 디렉토리 안에 있는 파일이름으로 사용한다. Ruby에서는 `FileUtils.mkdir_p()`로 하위 디렉토리의 존재를 보장하고 나서 `File.open()`으로 파일을 연다. 그리고 그 파일에 zlib으로 압축한 내용을 `write()` 함수로 저장한다.
 
 	>> path = '.git/objects/' + sha1[0,2] + '/' + sha1[2,38]
 	=> ".git/objects/bd/9dbf5aae1a3862dd1526723246b20206e5fc37"
@@ -365,6 +377,8 @@ Finally, you’ll write your zlib-deflated content to an object on disk. You’l
 	=> 32
 
 That’s it — you’ve created a valid Git blob object. All Git objects are stored the same way, just with different types — instead of the string blob, the header will begin with commit or tree. Also, although the blob content can be nearly anything, the commit and tree content are very specifically formatted.
+
+다 됐다. 이제 Git Blob 개체를 손으로 만들었다. Git 개체는 모두 이 방식으로 저장되며 단지 타입만 다를 뿐이다. Blob 개체가 아니면 헤더가 그냥 `commit`이나 `tree`로 시작하게 되는 것 뿐이다. Blob 개체는 여기서 보여준 것이랑 거의 전부지만 Commit이나 Tree 개체는 각기 다른 형식을 사용한다.
 
 ## Git References / Git 레퍼런스 ##
 
@@ -978,7 +992,7 @@ Because the reflog data is kept in the `.git/logs/` directory, you effectively h
 
 In this case, you can see your missing commit after the dangling commit. You can recover it the same way, by adding a branch that points to that SHA.
 
-### Removing Objects / 객체 삭제 ###
+### Removing Objects / 개체 삭제 ###
 
 There are a lot of great things about Git, but one feature that can cause issues is the fact that a `git clone` downloads the entire history of the project, including every version of every file. This is fine if the whole thing is source code, because Git is highly optimized to compress that data efficiently. However, if someone at any point in the history of your project added a single huge file, every clone for all time will be forced to download that large file, even if it was removed from the project in the very next commit. Because it’s reachable from the history, it will always be there.
 
