@@ -384,7 +384,11 @@ That’s it — you’ve created a valid Git blob object. All Git objects are st
 
 You can run something like `git log 1a410e` to look through your whole history, but you still have to remember that `1a410e` is the last commit in order to walk that history to find all those objects. You need a file in which you can store the SHA-1 value under a simple name so you can use that pointer rather than the raw SHA-1 value.
 
+`git log 1a410e` 라고 실행하면 전체 히스토리를 볼 수 있지만 여전히 `1a410e`를 기억해야 한다. 이 커밋은 마지막 커밋이기 때문에 히스토리를 따라 모든 개체를 조회할 수 있다. SHA-1 값을 날로 사용하는 것보다 쉬운 이름으로 된 포인터를 사용하는 것이 더 좋다. 즉 SHA-1 값을 쉬운 이름으로 저장한 파일이 필요하다.
+
 In Git, these are called "references" or "refs"; you can find the files that contain the SHA-1 values in the `.git/refs` directory. In the current project, this directory contains no files, but it does contain a simple structure:
+
+Git에서는 이런 것을 "참조"나 "refs"라고 부른다. `.git/refs` 디렉토리에 SHA-1 값이 들어 있는 파일이 있다. 현 프로젝트에는 아직 파일이 하나도 없지만 구조는 매우 단순하다:
 
 	$ find .git/refs
 	.git/refs
@@ -395,9 +399,13 @@ In Git, these are called "references" or "refs"; you can find the files that con
 
 To create a new reference that will help you remember where your latest commit is, you can technically do something as simple as this:
 
+참조가 있으면 마지막 커밋이 무엇인지 기억하기 쉽다. 사실 내부적으로는 다음과 같이 단순하다:
+
 	$ echo "1a410efbd13591db07496601ebc7a059dd55cfe9" > .git/refs/heads/master
 
 Now, you can use the head reference you just created instead of the SHA-1 value in your Git commands:
+
+SHA-1 값 대신에 지금 만든 참조를 사용할 수 있다:
 
 	$ git log --pretty=oneline  master
 	1a410efbd13591db07496601ebc7a059dd55cfe9 third commit
@@ -406,13 +414,19 @@ Now, you can use the head reference you just created instead of the SHA-1 value 
 
 You aren’t encouraged to directly edit the reference files. Git provides a safer command to do this if you want to update a reference called `update-ref`:
 
+참조 파일을 직접 고치는 것은 좀 못 마땅하다. Git에는 좀 더 안전하게 바꿀 수 있는 `update-ref` 명령이 있다:
+
 	$ git update-ref refs/heads/master 1a410efbd13591db07496601ebc7a059dd55cfe9
 
 That’s basically what a branch in Git is: a simple pointer or reference to the head of a line of work. To create a branch back at the second commit, you can do this:
 
+Git의 브랜치는 단순히 포인터다. 기본적으로 하고 있는 일을 가리키는 참조일 뿐이다. 간단히 두번째 커밋을 가리키는 브랜치를 만들어 보자:
+
 	$ git update-ref refs/heads/test cac0ca
 
 Your branch will contain only work from that commit down:
+
+브랜치는 직접 가리키는 커밋과 그 커밋으로 따라 갈 수 있는 모든 커밋을 포함한다:
 
 	$ git log --pretty=oneline test
 	cac0cab538b970a37ea1e769cbbde608743bc96d second commit
@@ -420,37 +434,53 @@ Your branch will contain only work from that commit down:
 
 Now, your Git database conceptually looks something like Figure 9-4.
 
+이제 Git 데이터베이스는 그림 9-4 처럼 보일 것이다.
+
 Insert 18333fig0904.png 
-Figure 9-4. Git directory objects with branch head references included.
+Figure 9-4. 브랜치 참조가 추가된 Git 데이터베이스
 
 When you run commands like `git branch (branchname)`, Git basically runs that `update-ref` command to add the SHA-1 of the last commit of the branch you’re on into whatever new reference you want to create.
+
+`git branch (branchname)` 명령을 실행하면 Git은 내부적으로 `update-ref` 명령을 실행한다. 입력받은 브랜치 이름과 현 브랜치의 마지막 커밋에서 SHA-1 값을 가져다 `update-ref` 명령을 실행하는 것이다.
 
 ### The HEAD / HEAD ###
 
 The question now is, when you run `git branch (branchname)`, how does Git know the SHA-1 of the last commit? The answer is the HEAD file. The HEAD file is a symbolic reference to the branch you’re currently on. By symbolic reference, I mean that unlike a normal reference, it doesn’t generally contain a SHA-1 value but rather a pointer to another reference. If you look at the file, you’ll normally see something like this:
+
+`git branch (branchname)` 명령을 실행하면 어떻게 Git은 마지막 커밋의 SHA-1 값을 아는 걸까? HEAD 파일은 현 브랜치를 가리키는 간접(symbolic) 참조다. 간접 참조이기 때문에 다른 참조와 다르게 생겼다. 이 참조은 다른 참조를 가리키는 것이라서 SHA-1 값이 없다. 파일을 열어 보면 다음과 같이 생겼다:
 
 	$ cat .git/HEAD 
 	ref: refs/heads/master
 
 If you run `git checkout test`, Git updates the file to look like this:
 
+`git checkout test`를 실행하면 Git은 HEAD 파일을 다음과 같이 바꾼다.
+
 	$ cat .git/HEAD 
 	ref: refs/heads/test
 
 When you run `git commit`, it creates the commit object, specifying the parent of that commit object to be whatever SHA-1 value the reference in HEAD points to.
 
+`git commit`을 실행하면 Commit 개체가 만들어 지는데, 지금 HEAD가 가리키고 있던 커밋의 SHA-1 값이 그 Commit 개체의 부모로 사용된다.
+
 You can also manually edit this file, but again a safer command exists to do so: `symbolic-ref`. You can read the value of your HEAD via this command:
+
+이 파일도 손으로 직접 편집할 수 있지만  `symbolic-ref` 라는 명령어가 있어서 좀 더 안전하게 사용할 수 있다. 이 명령으로 HEAD의 값을 읽을 수 있다:
 
 	$ git symbolic-ref HEAD
 	refs/heads/master
 
 You can also set the value of HEAD:
 
+HEAD의 값을 변경할 수도 있다:
+
 	$ git symbolic-ref HEAD refs/heads/test
 	$ cat .git/HEAD 
 	ref: refs/heads/test
 
 You can’t set a symbolic reference outside of the refs style:
+
+refs 형식에 맞지 않으면 수정할 수 없다:
 
 	$ git symbolic-ref HEAD test
 	fatal: Refusing to point HEAD outside of refs/
@@ -459,20 +489,30 @@ You can’t set a symbolic reference outside of the refs style:
 
 You’ve just gone over Git’s three main object types, but there is a fourth. The tag object is very much like a commit object — it contains a tagger, a date, a message, and a pointer. The main difference is that a tag object points to a commit rather than a tree. It’s like a branch reference, but it never moves — it always points to the same commit but gives it a friendlier name.
 
+중요한 개체 타입을 모두 살펴봤지만 아직 하나 더 남았다. Tag 개체는 Commit 개체랑 매우 비슷하다. Commit 개체 처럼 누가, 언제 Tag를 달았는지 Tag 메시지는 무엇이고 어떤 커밋을 가리키는 지에 대한 정보가 포함된다. Tag 개체는 Tree 개체가 아니라 Commit 개체를 가리킨다는 것이 그 둘 간의 차이다. 브랜치 처럼 Commit 개체를 가리키지만 옮길 수는 없다. Tag 개체는 늘 그 이름이 뜻하는 커밋만 가리킨다.
+
 As discussed in Chapter 2, there are two types of tags: annotated and lightweight. You can make a lightweight tag by running something like this:
+
+2장에서 살펴봤듯이 Tag는 Annotated Tag와 Lightweight Tag 두 종류로 나뉜다. 먼저 다음과 같이 Lightweight Tag를 만들어 보자:
 
 	$ git update-ref refs/tags/v1.0 cac0cab538b970a37ea1e769cbbde608743bc96d
 
 That is all a lightweight tag is — a branch that never moves. An annotated tag is more complex, however. If you create an annotated tag, Git creates a tag object and then writes a reference to point to it rather than directly to the commit. You can see this by creating an annotated tag (`-a` specifies that it’s an annotated tag):
 
+Lightwieght Tag는 만들기 쉽다. 브랜치랑 비슷하지만 브랜치 처럼 옮길 수는 없다. 그리고 Annotated Tag는 좀 더 복잡하다. Annotated Tag를 만들면 Git은 Tag 개체를 만들고 거기에 커밋을 가리키는 참조를 저장한다. Annotated Tag는 커밋을 직접 가리키지 않고 Tag 개체를 가리킨다. `-a` 옵션을 주고 Annotated Tag를 만들어 확인할 수 있다.
+
 	$ git tag -a v1.1 1a410efbd13591db07496601ebc7a059dd55cfe9 -m 'test tag'
 
 Here’s the object SHA-1 value it created:
+
+Tag 개체의 SHA-1 값을 확인한다:
 
 	$ cat .git/refs/tags/v1.1 
 	9585191f37f7b0fb9444f35a9bf50de191beadc2
 
 Now, run the `cat-file` command on that SHA-1 value:
+
+`cat-file` 명령으로 해당 SHA-1 값의 내용을 조회한다:
 
 	$ git cat-file -p 9585191f37f7b0fb9444f35a9bf50de191beadc2
 	object 1a410efbd13591db07496601ebc7a059dd55cfe9
@@ -484,13 +524,21 @@ Now, run the `cat-file` command on that SHA-1 value:
 
 Notice that the object entry points to the commit SHA-1 value that you tagged. Also notice that it doesn’t need to point to a commit; you can tag any Git object. In the Git source code, for example, the maintainer has added their GPG public key as a blob object and then tagged it. You can view the public key by running
 
+`object` 부분에 있는 SHA-1 값이 실제로 Tag를 단 커밋이다. 그리고 Commit 개체에 Tag를 다는 것이 아니라 Git 개체에 Tag를 다는 것이다. 그래서 모든 개체에 Tag를 달 수 있다. Git 프로제트에서는 관리자가 자신의 GPG 공개키를 Blob 개체로 추가하고 그 파일에 tag를 달아 둔다. 다음 명령으로 그 공개키를 확인할 수 있다:
+
 	$ git cat-file blob junio-gpg-pub
 
 in the Git source code repository. The Linux kernel repository also has a non-commit-pointing tag object — the first tag created points to the initial tree of the import of the source code.
 
-### Remotes / 리모트(원격저장소) ###
+Linux Kernel 저장소에도 커밋이 아닌 다른 개체를 가리키는 Tag 개체가 있다. 그 저장소의 첫번째 Tag는 소스 코드를 임포트했을 때, 그때의 첫 Tree 개체를 가리킨다.
+
+### Remotes / Remote ###
 
 The third type of reference that you’ll see is a remote reference. If you add a remote and push to it, Git stores the value you last pushed to that remote for each branch in the `refs/remotes` directory. For instance, you can add a remote called `origin` and push your `master` branch to it:
+
+그리고 Remote 참조라는 것도 있다. Remote를 추가하고 푸시하면 Git은 각 브랜치마다 Push한 마지막 커밋이 무엇인지 `refs/remotes` 디렉토리에 저장한다. 예를 들어, `origin` 이라는 Remote를 추가하고 `master` 브랜치를 Push한다.
+
+(번역: 이전에 Remote를 원격 저장소로 번역했는데 이 부분도 좀 그렇네..)
 
 	$ git remote add origin git@github.com:schacon/simplegit-progit.git
 	$ git push origin master
@@ -503,10 +551,14 @@ The third type of reference that you’ll see is a remote reference. If you add 
 
 Then, you can see what the `master` branch on the `origin` remote was the last time you communicated with the server, by checking the `refs/remotes/origin/master` file:
 
+`origin`의 `master` 브랜치에서 서버와 마지막으로 교환한 커밋이 무었인지 확인하려면 `refs/remotes/origin/master` 파일을 확인한다:
+
 	$ cat .git/refs/remotes/origin/master 
 	ca82a6dff817ec66f44342007202690a93763949
 
 Remote references differ from branches (`refs/heads` references) mainly in that they can’t be checked out. Git moves them around as bookmarks to the last known state of where those branches were on those servers.
+
+Remote 참조는 `refs/heads`에 있는 참조인 브랜치와 차이점은 Checkout할 수 없다는 것이다. 이 Remote 참조는 서버의 브랜치가 가리키고 있는 커밋이 무었인지 적어둔 일종의 북마크이다.
 
 ## Packfiles / Pack 파일 ##
 
