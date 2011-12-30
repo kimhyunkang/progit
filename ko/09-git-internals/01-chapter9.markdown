@@ -2,8 +2,7 @@
 
 You may have skipped to this chapter from a previous chapter, or you may have gotten here after reading the rest of the book — in either case, this is where you’ll go over the inner workings and implementation of Git. I found that learning this information was fundamentally important to understanding how useful and powerful Git is, but others have argued to me that it can be confusing and unnecessarily complex for beginners. Thus, I’ve made this discussion the last chapter in the book so you could read it early or later in your learning process. I leave it up to you to decide.
 
-여기까지 다 읽고 왔든 건너 뛰고 왔든 간에 지금 펼진 9장은 Git이 어떻게 구현돼 있고 내부적으로 어떻게 동작하는지 살펴볼 것이다.
-Git이 얼마나 유용하고 강력한지 알려면 9장의 내용을 꼭 알아야 한다. 초보자에게 9장은 너무 혼란스럽고 불필요하다고 이야기하는 사람들도 있다. 그래서 이 내용을 책의 가장 마지막에 넣었고 독자가 스스로 먼저 볼지 나중에 볼지 선택할 수 있도록 하였다.
+여기까지 다 읽고 왔든 건너 뛰고 왔든 간에 지금 펼친 9장은 Git이 어떻게 구현돼 있고 내부적으로 어떻게 동작하는지 살펴볼 것이다. Git이 얼마나 유용하고 강력한지 알려면 9장의 내용을 꼭 알아야 한다. 초보자에게 9장은 너무 혼란스럽고 불필요하다고 이야기하는 사람들도 있다. 그래서 이 내용을 책의 가장 마지막에 넣었고 독자가 스스로 먼저 볼지 나중에 볼지 선택할 수 있도록 하였다.
 
 Now that you’re here, let’s get started. First, if it isn’t yet clear, Git is fundamentally a content-addressable filesystem with a VCS user interface written on top of it. You’ll learn more about what this means in a bit.
 
@@ -11,17 +10,17 @@ Now that you’re here, let’s get started. First, if it isn’t yet clear, Git
 
 In the early days of Git (mostly pre 1.5), the user interface was much more complex because it emphasized this filesystem rather than a polished VCS. In the last few years, the UI has been refined until it’s as clean and easy to use as any system out there; but often, the stereotype lingers about the early Git UI that was complex and difficult to learn.
 
-Git의 초년기에는 (1.5 이전 버전) 사용자 인터페이스가 훨씬 복잡했었다. VCS가 아니라 파일 시스템을 강조했 기 때문이었다. 최근 몇년간 Git은 다른 VCS 처럼 쉽고 간결하게 사용자 인터페이스를 다듬어 졌다. 하지만 복잡하고 배우기 어렵다는 선입견은 여전하다.
+Git의 초년기에는 (1.5 이전 버전) 사용자 인터페이스가 훨씬 복잡했었다. VCS가 아니라 파일 시스템을 강조했기 때문이었다. 최근 몇 년간 Git은 다른 VCS 처럼 쉽고 간결하게 사용자 인터페이스를 다듬어 왔다. 하지만 복잡하고 배우기 어렵다는 선입견은 여전하다.
 
 The content-addressable filesystem layer is amazingly cool, so I’ll cover that first in this chapter; then, you’ll learn about the transport mechanisms and the repository maintenance tasks that you may eventually have to deal with.
 
-Content-addressable 파일 시스템은 정말 대단한 것이기 때문에 가장 먼저 다룰 것이다. 그리고 나서 Transport 원리를 배우고 결국 저장소를 관리하는 법까지 배우게 될 것이다.
+Content-addressable 파일 시스템은 정말 대단한 것이므로 우선 먼저 다룰 것이다. 그리고 나서 Transport 원리를 배우고 결국 저장소를 관리하는 법까지 배우게 될 것이다.
 
 ## Plumbing and Porcelain / Plumbing 명령과 Porcelain 명령 ##
 
 This book covers how to use Git with 30 or so verbs such as `checkout`, `branch`, `remote`, and so on. But because Git was initially a toolkit for a VCS rather than a full user-friendly VCS, it has a bunch of verbs that do low-level work and were designed to be chained together UNIX style or called from scripts. These commands are generally referred to as "plumbing" commands, and the more user-friendly commands are called "porcelain" commands.
 
-이 책에서는 `checkout`, `branch`, `remote`와 같은 30여가지의 Git 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 명령어 여러개를 Unix 스타일로 함께 엮어서 실행하거나 스크립트에서 호출될 수 있도록 디자인됐다. 이러한 저수준의 명령어는 "Plumbing" 명령어라고 부르고 좀 더 사용자 친화적인 명령어는 "Porcelain" 명령어이라고 부른다.
+이 책에서는 `checkout`, `branch`, `remote`와 같은 30여가지의 Git 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 명령어 여러개를 Unix 스타일로 함께 엮어서 실행하거나 스크립트에서 호출될 수 있도록 디자인됐다. 이러한 저수준의 명령어는 "Plumbing" 명령어라고 부르고 좀 더 사용자 친화적인 명령어는 "Porcelain" 명령어라고 부른다.
 
 The book’s first eight chapters deal almost exclusively with porcelain commands. But in this chapter, you’ll be dealing mostly with the lower-level plumbing commands, because they give you access to the inner workings of Git and help demonstrate how and why Git does what it does. These commands aren’t meant to be used manually on the command line, but rather to be used as building blocks for new tools and custom scripts.
 
@@ -44,11 +43,11 @@ When you run `git init` in a new or existing directory, Git creates the `.git` d
 
 You may see some other files in there, but this is a fresh `git init` repository — it’s what you see by default. The `branches` directory isn’t used by newer Git versions, and the `description` file is only used by the GitWeb program, so don’t worry about those. The `config` file contains your project-specific configuration options, and the `info` directory keeps a global exclude file for ignored patterns that you don’t want to track in a .gitignore file. The `hooks` directory contains your client- or server-side hook scripts, which are discussed in detail in Chapter 6.
 
-파일이 몇개 있어 빈 디렉토리는 아니지만 실제로 `git init`을 하고 난 직후의 기본적인 새 저장소의 모습이다. `branches` 디렉토리는 Git의 최신 버전에서 사용하지 않고 `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용하기 때문에 이 둘은 몰라도 된다. `config` 파일은 해당 프로젝트에만 적용되는 설정 옵션이 들어 있고, `info` 디렉토리는 .gitingore 파일 처럼 무시할 파일의 패턴을 적어 두는 곳이다. 하지만 .gitignore 파일과는 달리 Git으로 관리되지 않는다. `hook` 디렉토리는 클라이언트 훅이나 서버 훅을 넣는다. 관련 내용은 7장에서 다루었다.
+파일이 몇개 있어 빈 디렉토리는 아니지만 실제로 `git init`을 하고 난 직후의 기본적인 새 저장소의 모습이다. `branches` 디렉토리는 Git의 최신 버전에서 사용하지 않고 `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용하기 때문에 이 둘은 무시해도 된다. `config` 파일은 해당 프로젝트에만 적용되는 설정 옵션이 들어 있고, `info` 디렉토리는 .gitingore 파일 처럼 무시할 파일의 패턴을 적어 두는 곳이다. 하지만 .gitignore 파일과는 달리 Git으로 관리되지 않는다. `hook` 디렉토리는 클라이언트 훅이나 서버 훅을 넣는다. 관련 내용은 7장에서 다루었다.
 
 This leaves four important entries: the `HEAD` and `index` files and the `objects` and `refs` directories. These are the core parts of Git. The `objects` directory stores all the content for your database, the `refs` directory stores pointers into commit objects in that data (branches), the `HEAD` file points to the branch you currently have checked out, and the `index` file is where Git stores your staging area information. You’ll now look at each of these sections in detail to see how Git operates.
 
-이제 네 가지 항목이 남았는데 모두 중요한 항목들이다. `HEAD`와 `index` 파일, `objects`와 `refs` 디렉토리가 남았다. 이 네 항목이 Git의 핵심이다. `objects` 디렉토리는 모든 컨텐트를 저장하는 데이터베이스이다. `refs` 디렉토리에는 커밋 개체의 포인터를 저장한다. `HEAD` 파일은 현재 Checkout한 브랜치를 가리키고 `index` 파일은 Staging Area의 정보를 저장한다. 이 네가지 항목을 자세히 살펴보면 Git이 어떻게 동작하는지 알게 될 것이다.
+이제 남은 네 가지 항목은 모두 중요한 항목이다. `HEAD`와 `index` 파일, `objects`와 `refs` 디렉토리가 남았다. 이 네 항목이 Git의 핵심이다. `objects` 디렉토리는 모든 컨텐트를 저장하는 데이터베이스이다. `refs` 디렉토리에는 커밋 개체의 포인터를 저장한다. `HEAD` 파일은 현재 Checkout한 브랜치를 가리키고 `index` 파일은 Staging Area의 정보를 저장한다. 이 네가지 항목을 자세히 살펴보면 Git이 어떻게 동작하는지 알게 될 것이다.
 
 ## Git Objects / Git 개체 ##
 
@@ -77,7 +76,7 @@ Git은 `objects` 디렉토리를 만들고 그 밑에 `pack`과 `info` 디렉토
 
 The `-w` tells `hash-object` to store the object; otherwise, the command simply tells you what the key would be. `--stdin` tells the command to read the content from stdin; if you don’t specify this, `hash-object` expects the path to a file. The output from the command is a 40-character checksum hash. This is the SHA-1 hash — a checksum of the content you’re storing plus a header, which you’ll learn about in a bit. Now you can see how Git has stored your data:
 
-이 명령은 표준입력으로 들어 오는 데이터를 저장하는 예이다. `-w` 옵션을 줘야 저장하고 `-w`가 없으면 저장하지 않고 key만 보여준다. 그리고 `--stdin` 옵션을 주면 표준입력으로 데이터를 읽도록 지시하는 것이다. 이 옵션이 없으면 파일 경로를 알려줘야 한다. `hash-object` 명령이 출력하는 것은 40 자 길이의 체크섬 해시다. 이 해시는 헤더 정보와 데이터 모두에 대한 SHA-1 해시이다. 헤더 정보는 차차 자세히 살펴볼 것이다. 이제 Git이 저장한 데이터를 알아 보자:
+이 명령은 표준입력으로 들어오는 데이터를 저장하는 예이다. `-w` 옵션을 줘야 저장하고 `-w`가 없으면 저장하지 않고 key만 보여준다. 그리고 `--stdin` 옵션을 주면 표준입력으로 데이터를 읽도록 지시하는 것이다. 이 옵션이 없으면 파일 경로를 알려줘야 한다. `hash-object` 명령이 출력하는 것은 40 자 길이의 체크섬 해시다. 이 해시는 헤더 정보와 데이터 모두에 대한 SHA-1 해시이다. 헤더 정보는 차차 자세히 살펴볼 것이다. 이제 Git이 저장한 데이터를 알아 보자:
 
 	$ find .git/objects -type f 
 	.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4
@@ -111,7 +110,7 @@ Then, write some new content to the file, and save it again:
 
 Your database contains the two new versions of the file as well as the first content you stored there:
 
-이제 데이터베이스에는 데이터가 두가지 버전으로 저장돼 있다:
+이제 데이터베이스에는 데이터가 두 가지 버전으로 저장돼 있다:
 
 	$ find .git/objects -type f 
 	.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a
@@ -832,17 +831,17 @@ Git can transfer data between two repositories in two major ways: over HTTP and 
 
 Git은 두 저장소간 데이터 전송을 할 때 주로 두 가지 종류의 프로토콜을 사용한다. 하나는 HTTP이며 다른 하나는 소위 정교한 프로토콜이라고 부를 수 있는 `file://`, `ssh://`, and `git://` 프로토콜을 사용한다. 주로 사용하는 이 두 가지 종류의 프로토콜이 어떻게 데이터를 전송하는지 간단히 살펴볼 것이다.
 
-### The Dumb Protocol / 단순한(Dumb) 프로토콜 ###
+### The Dumb Protocol / Dumb 프로토콜 ###
 
 Git transport over HTTP is often referred to as the dumb protocol because it requires no Git-specific code on the server side during the transport process. The fetch process is a series of GET requests, where the client can assume the layout of the Git repository on the server. Let’s follow the `http-fetch` process for the simplegit library:
 
-Git이 데이터를 전송할 때는 HTTP를 사용하면 단순한 프로토콜이라고 부른다. 데이터를 전송할 때 서버측에서는 Git만을 위한 특화된 코드를 전혀 사용하지 않기 때문이다. Fetch 하는 과정은 여러 개의 GET 요청을 순서대로 보내고 데이터를 받는다. Git은 서버측의 Git 저장소 구성이 일반적인 Git 저장소의 모습이라고 가정한다. `simplegit` 라이브러리에 대한 `http-fetch` 과정을 살펴보자:
+Git이 데이터를 전송할 때는 HTTP를 사용하면 Dumb 프로토콜이라고 부른다. 데이터를 전송할 때 서버측에서는 Git만을 위해 특화된 코드를 전혀 사용하지 않기 때문이다. Fetch 하는 과정은 여러 개의 GET 요청을 순서대로 보내고 데이터를 받는다. Git은 서버측의 Git 저장소 구성이 일반적인 Git 저장소의 모습이라고 가정한다. `simplegit` 라이브러리에 대한 `http-fetch` 과정을 살펴보자:
 
 	$ git clone http://github.com/schacon/simplegit-progit.git
 
 The first thing this command does is pull down the `info/refs` file. This file is written by the `update-server-info` command, which is why you need to enable that as a `post-receive` hook in order for the HTTP transport to work properly:
 
-가장 처음으로 하는 과정은 `info/refs` 파일을 내려받는 것이다. 이 파일은 `update-server-info` 명령에 의해 작성된다. 따라서 `post-receive` 훅이 `update-server-info` 명령을 호출해줘야 HTTP 전송이 잘 이루어진다.
+우선 처음으로 할 일은 `info/refs` 파일을 내려받는 것이다. 이 파일은 `update-server-info` 명령에 의해 작성된다. 따라서 `post-receive` 훅이 `update-server-info` 명령을 호출해줘야 HTTP 전송이 잘 이루어진다.
 
 	=> GET info/refs
 	ca82a6dff817ec66f44342007202690a93763949     refs/heads/master
@@ -937,15 +936,21 @@ The entire output of this process looks like this:
 	walk 085bb3bcb608e1e8451d4b2432f8ecbe6306e7e7
 	walk a11bef06a3f659402fe7563abf99ad00de2209e6
 
-### The Smart Protocol / 정교한 프로토콜 ###
+### The Smart Protocol / Smart 프로토콜 ###
 
 The HTTP method is simple but a bit inefficient. Using smart protocols is a more common method of transferring data. These protocols have a process on the remote end that is intelligent about Git — it can read local data and figure out what the client has or needs and generate custom data for it. There are two sets of processes for transferring data: a pair for uploading data and a pair for downloading data.
+
+HTTP 프로토콜은 매우 단순하다는 장점이 있으나 전송은 효율적이지 못하다. 데이터 전송에 Smart 프로토콜을 사용하는 것이 보통이다. 이 프로토콜은 원격 서버가 해 줄 일이 있다. 서버가 해 줄 일은 클라이언트가 어떤 데이터를 갖고 있고 어떤 데이터가 필요한지 분석하여 저장소의 데이터에서 보내줄 데이터를 생성할 수 있다. 데이터 전송을 위해서 크게 두 가지 과정이 있다. 하나는 데이터를 업로드 하는 것이고 다른 하나는 다운로드 하는 것이다.
 
 #### Uploading Data / 데이터 업로드 ####
 
 To upload data to a remote process, Git uses the `send-pack` and `receive-pack` processes. The `send-pack` process runs on the client and connects to a `receive-pack` process on the remote side.
 
+원격 서버로 데이터를 업로드하는 과정에서 Git은 `send-pack`과 `receive-pace` 명령을 사용한다. `send-pack` 명령은 클라이언트에서 실행되며 서버쪽의 `receive-pack` 명령에 연결된다.
+
 For example, say you run `git push origin master` in your project, and `origin` is defined as a URL that uses the SSH protocol. Git fires up the `send-pack` process, which initiates a connection over SSH to your server. It tries to run a command on the remote server via an SSH call that looks something like this:
+
+예를 들어 `origin`이 SSH 프로토콜 URL로 설정된 상태에서 `git push origin master` 명령을 실행해보자. Git은 우선 `send-pack` 과정을 실행하는데 서버에 SSH 연결을 만들며 시작한다.
 
 	$ ssh -x git@github.com "git-receive-pack 'schacon/simplegit-progit.git'"
 	005bca82a6dff817ec66f4437202690a93763949 refs/heads/master report-status delete-refs
@@ -954,9 +959,15 @@ For example, say you run `git push origin master` in your project, and `origin` 
 
 The `git-receive-pack` command immediately responds with one line for each reference it currently has — in this case, just the `master` branch and its SHA. The first line also has a list of the server’s capabilities (here, `report-status` and `delete-refs`).
 
+`git-receive-pack` 명령은 우선 갖고 있는 레퍼런스 정보를 각 줄에 하나씩 보여준다. 이 예제의 경우 `master` 브랜치의 이름과 SHA 체크섬을 첫 번째 줄에서 확인할 수 있다. 첫 번째 줄은 서버의 Capability 또한 나열해준다(이 예제의 경우 `report-status`와 `delete-refs` 이다).
+
 Each line starts with a 4-byte hex value specifying how long the rest of the line is. Your first line starts with 005b, which is 91 in hex, meaning that 91 bytes remain on that line. The next line starts with 003e, which is 62, so you read the remaining 62 bytes. The next line is 0000, meaning the server is done with its references listing.
 
+각 줄의 첫 번째 4 바이트의 Hex 값은 4 바이트를 제외한 각 줄의 나머지 길이를 나타낸다. 첫 번째 줄이 005b로 시작하는데 이 Hex 값은 91을 나타낸다. 즉 첫 번째 줄의 처음 4 바이트를 제외한 나머지 길이는 91바이트라는 것이다. 다음 줄의 값은 003b이며 이는 62바이트를 나타낸다. 그 다음 줄은 값이 0000이며 이는 서버가 레퍼런스 목록의 출력을 끝냈다는 것을 의미한다.
+
 Now that it knows the server’s state, your `send-pack` process determines what commits it has that the server doesn’t. For each reference that this push will update, the `send-pack` process tells the `receive-pack` process that information. For instance, if you’re updating the `master` branch and adding an `experiment` branch, the `send-pack` response may look something like this:
+
+이렇게 서버가 갖고 있는 정보를 알고 나면 `send-pack` 과정은 어떤 커밋 데이터들이 서버에 존재하지 않는 가를 분석할 수 있다. Push를 통해 업데이트가 이루어질 레퍼런스에 대해서 `send-pack`은 서버쪽의 `receive-pack`에 해당 정보를 전달 한다. 예를 들어 `master` 브랜치를 업데이트 하고 `experiment` 브랜치를 새로 보낸다고 하면 `send-pack`은 다음과 같은 응답을 서버에게 돌려준다.
 
 	0085ca82a6dff817ec66f44342007202690a93763949  15027957951b64cf874c3557a0f3547bd83b3ff6 refs/heads/master report-status
 	00670000000000000000000000000000000000000000 cdfdb42577e2506715f8cfeacdbabc092bf63e8d refs/heads/experiment
@@ -964,7 +975,11 @@ Now that it knows the server’s state, your `send-pack` process determines what
 
 The SHA-1 value of all '0's means that nothing was there before — because you’re adding the experiment reference. If you were deleting a reference, you would see the opposite: all '0's on the right side.
 
+SHA-1 해시값이 모두 0으로 채워져 있는 경우는 받는 쪽에 정보가 전혀 없는 경우를 말한다. 새로 추가하는 `experiment` 레퍼런스가 이에 해당된다. 반대로 레퍼런스를 삭제하는 경우 반대편 즉 업데이트를 할 오른편 위치의 해시 값을 모두 0으로 채운다.
+
 Git sends a line for each reference you’re updating with the old SHA, the new SHA, and the reference that is being updated. The first line also has the client’s capabilities. Next, the client uploads a packfile of all the objects the server doesn’t have yet. Finally, the server responds with a success (or failure) indication:
+
+Git은 업데이트 할 레퍼런스의 예전 SHA, 새로운 SHA, 레퍼런스 이름을 각 줄에 담아 전송한다. 첫 번째 줄에는 Client의 Capability도 함께 나열한다. 그 다음 클라이언트는 서버가 갖고있지 않은 모든 데이터를 하나의 Packfile에 담아서 전송한다. 마지막으로 서버는 성공적으로 데이터를 처리 했다는 메시지나 실패했다는 메시지로 응답한다.
 
 	000Aunpack ok
 
@@ -972,17 +987,27 @@ Git sends a line for each reference you’re updating with the old SHA, the new 
 
 When you download data, the `fetch-pack` and `upload-pack` processes are involved. The client initiates a `fetch-pack` process that connects to an `upload-pack` process on the remote side to negotiate what data will be transferred down.
 
+데이터를 다운로드 하는 경우에는 `fetch-pack`과 `upload-pack` 과정이 동작한다. 클라이언트가 `fetch-pack` 과정을 시작하면 서버쪽의 `upload-pack` 과정에 연결되어 어떤 데이터를 내려 받을 지 결정하게 된다.
+
 There are different ways to initiate the `upload-pack` process on the remote repository. You can run via SSH in the same manner as the `receive-pack` process. You can also initiate the process via the Git daemon, which listens on a server on port 9418 by default. The `fetch-pack` process sends data that looks like this to the daemon after connecting:
+
+원격 저장소에서 `upload-pack` 과정을 시작시키는 방법은 여러가지가 있다. SSH에서 `receive-pack` 과정 처럼 시작시킬수 있다. 기본적으로 9418 포트를 사용하는 Git 데몬을 이용하는 방법도 있다. 데몬에 연결되고 나면 `fetch-pack`은 다음과 같은 데이터를 전송한다:
 
 	003fgit-upload-pack schacon/simplegit-progit.git\0host=myserver.com\0
 
 It starts with the 4 bytes specifying how much data is following, then the command to run followed by a null byte, and then the server’s hostname followed by a final null byte. The Git daemon checks that the command can be run and that the repository exists and has public permissions. If everything is cool, it fires up the `upload-pack` process and hands off the request to it.
 
+처음 4 바이트는 뒤이어지는 데이터의 길이를 나타낸다. 첫 번째 널 바이트까지가 실행할 명령을 나타내며 다음 널 바이트까지는 연결하는 서버의 호스트 이름을 나타낸다. Git 데몬은 실행할 수 있는 명령인지, 저장소가 존재하는지, 권한은 있는지 등을 확인한다. 모든 것이 가능하다면 `upload-pack` 과정을 실행하여 들어오는 요청 데이터를 처리한다:
+
 If you’re doing the fetch over SSH, `fetch-pack` instead runs something like this:
+
+SSH 프로토콜을 사용한다면 `fetch-pack` 과정은 다음과 같이 실행된다:
 
 	$ ssh -x git@github.com "git-upload-pack 'schacon/simplegit-progit.git'"
 
 In either case, after `fetch-pack` connects, `upload-pack` sends back something like this:
+
+어떤 방식을 사용하든지 `upload-pack`은 다음과 같은 데이터를 전송한다:
 
 	0088ca82a6dff817ec66f44342007202690a93763949 HEAD\0multi_ack thin-pack \
 	  side-band side-band-64k ofs-delta shallow no-progress include-tag
@@ -992,7 +1017,11 @@ In either case, after `fetch-pack` connects, `upload-pack` sends back something 
 
 This is very similar to what `receive-pack` responds with, but the capabilities are different. In addition, it sends back the HEAD reference so the client knows what to check out if this is a clone.
 
+위 `receive-pack`의 응답 결과 모습이다. Capability 부분은 다를수도 있다. HEAD 레퍼런스에 대한 정보도 알려주기 때문에 저장소를 복제했을 때 어디에서 부터 시작할 지 알수도 있다.
+
 At this point, the `fetch-pack` process looks at what objects it has and responds with the objects that it needs by sending "want" and then the SHA it wants. It sends all the objects it already has with "have" and then the SHA. At the end of this list, it writes "done" to initiate the `upload-pack` process to begin sending the packfile of the data it needs:
+
+이 시점에서 `fetch-pack`은 어떤 객체를 이미 갖고 있는지 살펴보고 서버로부터 내려받아야 객체에 대해서 "want"를 앞에 붙이고 SHA 값을 전송한다. 이미 갖고 있는 객체에 대해서는 "have"를 앞에 붙이고 SHA 값을 전송한다. 마지막 줄에 "done"이라고 적어서 보내면, 서버의 `upload-pack`이 Packfile의 전송을 시작한다:
 
 	0054want ca82a6dff817ec66f44342007202690a93763949 ofs-delta
 	0032have 085bb3bcb608e1e8451d4b2432f8ecbe6306e7e7
@@ -1000,6 +1029,8 @@ At this point, the `fetch-pack` process looks at what objects it has and respond
 	0009done
 
 That is a very basic case of the transfer protocols. In more complex cases, the client supports `multi_ack` or `side-band` capabilities; but this example shows you the basic back and forth used by the smart protocol processes.
+
+데이터 전송 프로토콜에 대하여 가장 기본적인 상황을 통해 간단하게 살펴 보았다. 클라이언트가 `multi_ack`나 `side-band`를 지원하는 더 복잡한 상황도 있다. 하지만 여기에서는 Smart 프로토콜 과정에서 사용하는 가장 기본이 되는 상황에 대해서만 다루었다.
 
 ## Maintenance and Data Recovery / 운영 및 데이터 복구 ##
 
