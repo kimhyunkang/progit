@@ -707,9 +707,13 @@ The really nice thing about this is that it can be repacked at any time. Git wil
 Throughout this book, you’ve used simple mappings from remote branches to local references; but they can be more complex.
 Suppose you add a remote like this:
 
+이책에서 원격 브랜치와 로컬 참조로 연결하는 것이 간단하다고 배웠지만 실제로는 좀 더 복잡하다. 다음과 같은 원격 저장소를 추가해보자:
+
 	$ git remote add origin git@github.com:schacon/simplegit-progit.git
 
 It adds a section to your `.git/config` file, specifying the name of the remote (`origin`), the URL of the remote repository, and the refspec for fetching:
+
+이 명령은 `origin`이라는 저장소가 있고, 그 URL은 무었인지, Fetch할 Refspec은 무엇인지를 `.git/config` 파일에 추가한다.
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
@@ -717,7 +721,11 @@ It adds a section to your `.git/config` file, specifying the name of the remote 
 
 The format of the refspec is an optional `+`, followed by `<src>:<dst>`, where `<src>` is the pattern for references on the remote side and `<dst>` is where those references will be written locally. The `+` tells Git to update the reference even if it isn’t a fast-forward.
 
+Refspec 형식은 `+`와 `<src>:<dest>`로 돼 있다. `+`는 생략 가능하고,  `<src>`은 원격 저장소의 참조 패턴이고, `<dst>`는 매핑될 로컬 저장소의 참조 패턴이다. `+`가 없으면 Fast-forward가 아니면 업데이트되지 않는다.
+
 In the default case that is automatically written by a `git remote add` command, Git fetches all the references under `refs/heads/` on the server and writes them to `refs/remotes/origin/` locally. So, if there is a `master` branch on the server, you can access the log of that branch locally via
+
+`git remote add` 명령은 알아서 생성한 설정대로 서버의 `refs/heads/`에 있는 참조를 가져다 `refs/remotes/origin/` 디렉토리에 만든다. 서버에 있는 `master` 브랜치는 로컬에서 다음과 같이 접근해 사용할 수 있다:
 
 	$ git log origin/master
 	$ git log remotes/origin/master
@@ -725,15 +733,23 @@ In the default case that is automatically written by a `git remote add` command,
 
 They’re all equivalent, because Git expands each of them to `refs/remotes/origin/master`.
 
+Git은 이 세개를 모두 `refs/remotes/origin/master`라고 해석하기 때문에 모두 같다.
+
 If you want Git instead to pull down only the `master` branch each time, and not every other branch on the remote server, you can change the fetch line to
+
+master 브랜치만 pull할 수 있게 만들려면 `fetch` 부분을 다음과 같이 바꿔준다. 그러면 다른 브랜치는 pull할 수 없다:
 
 	fetch = +refs/heads/master:refs/remotes/origin/master
 
 This is just the default refspec for `git fetch` for that remote. If you want to do something one time, you can specify the refspec on the command line, too. To pull the `master` branch on the remote down to `origin/mymaster` locally, you can run
 
+이 것은 해당 원격 저장소에 `git fetch` 명령이 사용하는 자동 Refspec일 뿐이다. 명령을 실행할 때 다른 Refspec이 필요하면 그냥 인자로 넘기면 된다. 원격 브랜치 `master`를 로컬 브랜치 `origin/mymaster`로 가져오려면 다음과 같이 실행한다.
+
 	$ git fetch origin master:refs/remotes/origin/mymaster
 
 You can also specify multiple refspecs. On the command line, you can pull down several branches like so:
+
+동시에 Refspec을 여러개 줄 수도 있다. 다음과 같이 한꺼번에 브랜치 여러개를 가져온다:
 
 	$ git fetch origin master:refs/remotes/origin/mymaster \
 	   topic:refs/remotes/origin/topic
@@ -743,7 +759,11 @@ You can also specify multiple refspecs. On the command line, you can pull down s
 
 In this case, the  master branch pull was rejected because it wasn’t a fast-forward reference. You can override that by specifying the `+` in front of the refspec.
 
+여기서 `master` 브랜치는 Fast-forward가 아니라서 거절된다. Refspect 앞에 `+`를 추가하면 강제로 덮어쓴다.
+
 You can also specify multiple refspecs for fetching in your configuration file. If you want to always fetch the master and experiment branches, add two lines:
+
+설정 파일에도 Refspec을 여러개 적을 수 있다. 항상 `master`와 `experiment` 브랜치를 함께 가져오려면 둘 다 적어 준다:
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
@@ -752,9 +772,13 @@ You can also specify multiple refspecs for fetching in your configuration file. 
 
 You can’t use partial globs in the pattern, so this would be invalid:
 
+하지만 Glob 패턴은 사용할 수 없다:
+
 	fetch = +refs/heads/qa*:refs/remotes/origin/qa*
 
 However, you can use namespacing to accomplish something like that. If you have a QA team that pushes a series of branches, and you want to get the master branch and any of the QA team’s branches but nothing else, you can use a config section like this:
+
+그대신 일종의 네임스페이스를 사용할 수 있다. 만약 QA 팀이 Push하는 브랜치가 있고 이 브랜치를 가져오게 하고 싶으면 다음과 같이 설정한다. 다음은 `master` 브랜치와 QA 팀의 브랜치만 가져오는 설정이다:
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
@@ -763,15 +787,23 @@ However, you can use namespacing to accomplish something like that. If you have 
 
 If you have a complex workflow process that has a QA team pushing branches, developers pushing branches, and integration teams pushing and collaborating on remote branches, you can namespace them easily this way.
 
+이 방법으로 좀 더 복잡한 것도 가능하다. QA 팀뿐만 아니라, 일반 개발자, 통합 팀 등등이 사용하는 브랜치를 네임스페이스 별로 구분해 놓으면 좀 더 Git을 편리하게 사용할 수 있다.
+
 ### Pushing Refspecs / Refspec Push하기 ###
 
 It’s nice that you can fetch namespaced references that way, but how does the QA team get their branches into a `qa/` namespace in the first place? You accomplish that by using refspecs to push.
 
+네임스페이스 별로 가져오는 방법은 끝내 주지만 어떻게 Push할까? QA 팀은 `qa/` 네임스페이스에 자신의 브랜치를 어떻게 올릴 수 있을까? Push할 때도 Refspec을 사용한다.
+
 If the QA team wants to push their `master` branch to `qa/master` on the remote server, they can run
+
+QA 팀은 `master` 브랜치를 원격 저장소에 `qa/master` 로 Push할 수 있다:
 
 	$ git push origin master:refs/heads/qa/master
 
 If they want Git to do that automatically each time they run `git push origin`, they can add a `push` value to their config file:
+
+`git push origin`을 실행할 때마다 Git이 자동으로 Push하게 하려면 다음과 같이 설정 파일에 `push` 항목을 추가한다:
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
@@ -780,13 +812,19 @@ If they want Git to do that automatically each time they run `git push origin`, 
 
 Again, this will cause a `git push origin` to push the local `master` branch to the remote `qa/master` branch by default.
 
+다시 말하지만 `git push origin`을 실행하면 로컬 브랜치 `master`가 원격 브랜치 `qa/master`로 Push된다.
+
 ### Deleting References / 레퍼런스 삭제하기 ###
 
 You can also use the refspec to delete references from the remote server by running something like this:
 
+Refspec으로 서버에 있는 참조를 삭제할 수 있다:
+
 	$ git push origin :topic
 
 Because the refspec is `<src>:<dst>`, by leaving off the `<src>` part, this basically says to make the topic branch on the remote nothing, which deletes it. 
+
+Refspec의 형식은 `<src>:<dst>`이니까 `<src>`를 비우면 `<dst>`를 비우라는 의미가 된다. 그래서 `<dst>`는 삭제된다.
 
 ## Transfer Protocols / 데이터 전송 프로토콜 ##
 
