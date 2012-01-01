@@ -380,7 +380,7 @@ That’s it — you’ve created a valid Git blob object. All Git objects are st
 
 다 됐다. 이제 Git Blob 개체를 손으로 만들었다. Git 개체는 모두 이 방식으로 저장되며 단지 타입만 다를 뿐이다. Blob 개체가 아니면 헤더가 그냥 `commit`이나 `tree`로 시작하게 되는 것 뿐이다. Blob 개체는 여기서 보여준 것이랑 거의 전부지만 Commit이나 Tree 개체는 각기 다른 형식을 사용한다.
 
-## Git References / Git 레퍼런스 ##
+## Git References / Git 참조 ##
 
 You can run something like `git log 1a410e` to look through your whole history, but you still have to remember that `1a410e` is the last commit in order to walk that history to find all those objects. You need a file in which you can store the SHA-1 value under a simple name so you can use that pointer rather than the raw SHA-1 value.
 
@@ -414,7 +414,7 @@ SHA-1 값 대신에 지금 만든 참조를 사용할 수 있다:
 
 You aren’t encouraged to directly edit the reference files. Git provides a safer command to do this if you want to update a reference called `update-ref`:
 
-참조 파일을 직접 고치는 것은 좀 못 마땅하다. Git에는 좀 더 안전하게 바꿀 수 있는 `update-ref` 명령이 있다:
+참조 파일을 직접 고치는 것은 좀 못 마땅하다. Git은 좀 더 안전하게 바꿀 수 있는 `update-ref` 명령을 가지고 있다:
 
 	$ git update-ref refs/heads/master 1a410efbd13591db07496601ebc7a059dd55cfe9
 
@@ -639,7 +639,7 @@ You have two nearly identical 12K objects on your disk. Wouldn’t it be nice if
 
 It turns out that it can. The initial format in which Git saves objects on disk is called a loose object format. However, occasionally Git packs up several of these objects into a single binary file called a packfile in order to save space and be more efficient. Git does this if you have too many loose objects around, if you run the `git gc` command manually, or if you push to a remote server. To see what happens, you can manually ask Git to pack up the objects by calling the `git gc` command:
 
-가능하다. Git이 처음 개체를 저장하는 형식은 `loose object format`이라고 부른다. 하지만 나중에 이 개체들을 파일 하나로 압축(Pack)할 수 있다. 그래서 공간을 절약하고 효율을 높일 수 있다. `loose object`가 너무 많거나, `git gc` 명령을 실행했을 때, 그리고 원격 서버로 Push할 때 Git은 압축한다. `git gc` 명령을 실행해서 어떻게 압축되는지 살펴보자:
+가능하다. Git이 처음 개체를 저장하는 형식은 Loose 개체 포멧이라고 부른다. 하지만 나중에 이 개체들을 파일 하나로 압축(Pack)할 수 있다. 그래서 공간을 절약하고 효율을 높일 수 있다. Loose 개체가 너무 많거나, `git gc` 명령을 실행했을 때, 그리고 원격 서버로 Push할 때 Git은 압축한다. `git gc` 명령을 실행해서 어떻게 압축되는지 살펴보자:
 
 	$ git gc
 	Counting objects: 17, done.
@@ -1005,17 +1005,27 @@ That is a very basic case of the transfer protocols. In more complex cases, the 
 
 Occasionally, you may have to do some cleanup — make a repository more compact, clean up an imported repository, or recover lost work. This section will cover some of these scenarios.
 
+언젠가는 저장소를 손수 정리해야 할 날이 올지도 모른다. 저장소를 좀 더 꼼꼼하게(Compact)하게 만들고, 다른 CVS에서 임포트하고 나서 그 잔재를 치운다던가, 아니면 문제가 생겨서 복구해야 할 수도 있다. 이 절은 이때 필요한 것을 설명한다.
+
 ### Maintenance / 운영 ###
 
 Occasionally, Git automatically runs a command called "auto gc". Most of the time, this command does nothing. However, if there are too many loose objects (objects not in a packfile) or too many packfiles, Git launches a full-fledged `git gc` command. The `gc` stands for garbage collect, and the command does a number of things: it gathers up all the loose objects and places them in packfiles, it consolidates packfiles into one big packfile, and it removes objects that aren’t reachable from any commit and are a few months old.
 
+Git은 때가 되면 자동으로 "auto gc" 명령을 실행한다. 물론 거의 실행되지 않는다. Loose 개체가 너무 많거나, Packfile 자체가 너무 많으면 Git은 그제서야 진짜로 `git gc` 명령을 실행한다. `gc` 명령은 Garbage Collect하는 명령이다. 이 명령은 Loose 개체를 모아서 Packfile에 저장하거나 작은 Packfile을 모아서 하나의 큰 Packfile에 저장한다. 그리고 아무런 커밋도 참조하지 않는 개체가 있고 그 상태가 오래 지속되면 그때 개체를 삭제한다.
+
 You can run auto gc manually as follows:
+
+직접 "auto gc" 명령을 실행할 수도 있다:
 
 	$ git gc --auto
 
 Again, this generally does nothing. You must have around 7,000 loose objects or more than 50 packfiles for Git to fire up a real gc command. You can modify these limits with the `gc.auto` and `gc.autopacklimit` config settings, respectively.
 
+이 명령을 실행해도 보통은 아무일도 일어나지 않는다. Loose 개체가 7천개가 넘거나 Packfile이 50개가 넘지 않으면 Git은 실제로 `gc` 명령을 실행하지 않는다. 그리고 필요하면 `gc.auto`나 `gc.autopacklimit` 옵션으로 그 숫자를 조절할 수 있다:
+
 The other thing `gc` will do is pack up your references into a single file. Suppose your repository contains the following branches and tags:
+
+`gc`는 참조를 파일 하나로 압축한다. 예를 들어 저장소에 다음과 같은 브랜치와 Tag가 있다고 하자:
 
 	$ find .git/refs -type f
 	.git/refs/heads/experiment
@@ -1024,6 +1034,8 @@ The other thing `gc` will do is pack up your references into a single file. Supp
 	.git/refs/tags/v1.1
 
 If you run `git gc`, you’ll no longer have these files in the `refs` directory. Git will move them for the sake of efficiency into a file named `.git/packed-refs` that looks like this:
+
+`git gc`를 실행하면 `refs`에 있는 파일들이 사라진다. 대신 Git은 그 파일을 `.git/packed-refs` 파일로 압축해서 효율을 높인다: 
 
 	$ cat .git/packed-refs 
 	# pack-refs with: peeled 
@@ -1035,13 +1047,21 @@ If you run `git gc`, you’ll no longer have these files in the `refs` directory
 
 If you update a reference, Git doesn’t edit this file but instead writes a new file to `refs/heads`. To get the appropriate SHA for a given reference, Git checks for that reference in the `refs` directory and then checks the `packed-refs` file as a fallback. However, if you can’t find a reference in the `refs` directory, it’s probably in your `packed-refs` file.
 
+이 상태에서 참조를 수정하면 파일을 수정하는 게 아니라 `refs/heads` 폴더에 파일을 새로 만든다. Git은 참조가 가리키는 SHA 값을 찾을 때 먼저 `refs` 디렉토리에서 찾고 없으면 `packed-refs` 파일에서 찾는다. 그러니까 어떤 참조가 있는데 `refs` 디렉토리에 없다면 `packed-files`에 있을 것이다.
+
 Notice the last line of the file, which begins with a `^`. This means the tag directly above is an annotated tag and that line is the commit that the annotated tag points to.
+
+마지막에 있는 `^`로 시작하는 줄을 살펴보자. 이 것은 해당 Tag가 Annotated Tag라는 것을 말해준다. 그 줄의 SHA 값은 Annotated Tag가 가리키는 커밋이다.
 
 ### Data Recovery / 데이터 복구 ###
 
 At some point in your Git journey, you may accidentally lose a commit. Generally, this happens because you force-delete a branch that had work on it, and it turns out you wanted the branch after all; or you hard-reset a branch, thus abandoning commits that you wanted something from. Assuming this happens, how can you get your commits back?
 
+Git을 사용하다 보면 Commit을 잃어 버리는 실수를 할 때도 있다. 보통 작업중인 브랜치를 강제로 삭제했거나, 어떤 커밋을 브랜치 밖으로 끄집어 내버렸거나, Hard-reset 하면 그렇게 될 수 있다. 어쨌든 원치 않게 커밋을 잃어 버리면 어떻게 다시 찾아야 할까?
+
 Here’s an example that hard-resets the master branch in your test repository to an older commit and then recovers the lost commits. First, let’s review where your repository is at this point:
+
+`master` 브랜치를 예전 커밋으로 Hard-reset하고 그 것을 다시 복구해보자. 먼자 연습용 저장소를 만든다;
 
 	$ git log --pretty=oneline
 	ab1afef80fac8e34258ff41fc1b867c702daa24b modified repo a bit
@@ -1052,6 +1072,8 @@ Here’s an example that hard-resets the master branch in your test repository t
 
 Now, move the `master` branch back to the middle commit:
 
+`master` 브랜치를 예전 커밋으로 Reset한다:
+
 	$ git reset --hard 1a410efbd13591db07496601ebc7a059dd55cfe9
 	HEAD is now at 1a410ef third commit
 	$ git log --pretty=oneline
@@ -1061,13 +1083,19 @@ Now, move the `master` branch back to the middle commit:
 
 You’ve effectively lost the top two commits — you have no branch from which those commits are reachable. You need to find the latest commit SHA and then add a branch that points to it. The trick is finding that latest commit SHA — it’s not like you’ve memorized it, right?
 
+그래서 최근 커밋 두 개는 어떤 브랜치도 가리키지 않게 됐다. 잃어 버렸다고 볼 수 있다. 그 두 커밋을 브랜치에 다시 포함시키려면 마지막 커밋이 무엇인지 찾아야 한다. SHA 값을 기억할리가 없고 뭔가 찾아낼 방법이 필요하다.
+
 Often, the quickest way is to use a tool called `git reflog`. As you’re working, Git silently records what your HEAD is every time you change it. Each time you commit or change branches, the reflog is updated. The reflog is also updated by the `git update-ref` command, which is another reason to use it instead of just writing the SHA value to your ref files, as we covered in the "Git References" section of this chapter earlier.  You can see where you’ve been at any time by running `git reflog`:
+
+보통 `git reflog` 명령을 사용하는게 가장 쉽다. HEAD가 가리키는 커밋이 바뀔때마다 Git은 자동으로 그 커밋이 무엇인지 저장한다. 커밋을 새로하거나 브랜치를 바꾸면 Reflog도 늘어 난다. 또한 "Git 참조" 절에서 배운 `git update-ref` 명령으로 손으로 Reflog를 남길 수 있다. 물론 `.git/HEAD` 파일을 직접 수정해도 된다(이부분 오역검토 요). `git reflog` 명령만 실행하면 언제나 발자취를 돌아 볼 수 있다:
 
 	$ git reflog
 	1a410ef HEAD@{0}: 1a410efbd13591db07496601ebc7a059dd55cfe9: updating HEAD
 	ab1afef HEAD@{1}: ab1afef80fac8e34258ff41fc1b867c702daa24b: updating HEAD
 
 Here we can see the two commits that we have had checked out, however there is not much information here.  To see the same information in a much more useful way, we can run `git log -g`, which will give you a normal log output for your reflog.
+
+Checkout 했었던 커밋 두 개만 보여 주는데 구체적인 정보까지 보여주진 않는다. 좀 더 자세히 보려면 `git log -g` 명령을 사용해야 한다. 이 명령은 Reflog를 `log` 명령 형식으로 보여준다.
 
 	$ git log -g
 	commit 1a410efbd13591db07496601ebc7a059dd55cfe9
@@ -1088,6 +1116,8 @@ Here we can see the two commits that we have had checked out, however there is n
 
 It looks like the bottom commit is the one you lost, so you can recover it by creating a new branch at that commit. For example, you can start a branch named `recover-branch` at that commit (ab1afef):
 
+두 번째 커밋이 잃어버린 것이니까 그 커밋을 가리키는 브랜치를 만들어 복구한다. 그 커밋(ab1afef)을 가리키는 브랜치 `recover-branch`를 만든다:
+
 	$ git branch recover-branch ab1afef
 	$ git log --pretty=oneline recover-branch
 	ab1afef80fac8e34258ff41fc1b867c702daa24b modified repo a bit
@@ -1097,12 +1127,19 @@ It looks like the bottom commit is the one you lost, so you can recover it by cr
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d first commit
 
 Cool — now you have a branch named `recover-branch` that is where your `master` branch used to be, making the first two commits reachable again. 
+
+`master` 브랜치가 가리키던 커밋을 `recover-branch` 브랜치가 가리키도록 만들어서 그 커밋 두 개는 다시 도달될 수 있게 됐다.
+
 Next, suppose your loss was for some reason not in the reflog — you can simulate that by removing `recover-branch` and deleting the reflog. Now the first two commits aren’t reachable by anything:
+
+이 보다 안좋은 상황을 가정해보자. 잃어 버린 두 커밋을 Reflog에서 못 찾았다. `recover-branch`를 다시 삭제하고 Reflog를 삭제하여 이 상황을 재현하자. 그러면 그 두 커밋은 다시 도달할 수 없게 된다:
 
 	$ git branch -D recover-branch
 	$ rm -Rf .git/logs/
 
 Because the reflog data is kept in the `.git/logs/` directory, you effectively have no reflog. How can you recover that commit at this point? One way is to use the `git fsck` utility, which checks your database for integrity. If you run it with the `--full` option, it shows you all objects that aren’t pointed to by another object:
+
+Reflog 데이터는 `.git/logs/` 디렉토리에 있기 때문에 그 디렉토리를 지우면 Reflog도 다 지워진다. 그러면 커밋을 어떻게 복구할 수 있을까? 한가지 방법이 있는데 `git fsck` 명령으로 데이터베이스의 Integrity를 검사 할 수 있다. 이 명령에 `--full` 옵션을 주고 실행하면 가리키는 개체가 없는 개체를 모두 보여준다.
 
 	$ git fsck --full
 	dangling blob d670460b4b4aece5915caf5c68d12f560a9fe3e4
@@ -1112,15 +1149,25 @@ Because the reflog data is kept in the `.git/logs/` directory, you effectively h
 
 In this case, you can see your missing commit after the dangling commit. You can recover it the same way, by adding a branch that points to that SHA.
 
+결과에 보이는 저 Dangling 커밋이 잃어 버린 커밋이니까 그 SHA를 가리키는 브랜치를 만들어 복구 한다.
+
 ### Removing Objects / 개체 삭제 ###
 
 There are a lot of great things about Git, but one feature that can cause issues is the fact that a `git clone` downloads the entire history of the project, including every version of every file. This is fine if the whole thing is source code, because Git is highly optimized to compress that data efficiently. However, if someone at any point in the history of your project added a single huge file, every clone for all time will be forced to download that large file, even if it was removed from the project in the very next commit. Because it’s reachable from the history, it will always be there.
 
+Git은 너무 굉장하지만 Clone할 때 히스토리를 전부 내려받는 것이 문제가 될 때도 있다. Git은 모든 파일의 모든 버전을 내려받는다. 사실 모든 파일이 소스코드라면 아무 문제 없다. Git은 최적화를 잘해서 데이터를 잘 압축한다. 하지만 누군가 매우 큰 파일을 넣어버리면 Clone할 때마다 그 파일을 내려받는다. 다음 커밋에서 그 파일을 삭제해도 히스토리에는 그대로 남아 있기 때문에 Clone할 때마다 포함된다.
+
 This can be a huge problem when you’re converting Subversion or Perforce repositories into Git. Because you don’t download the whole history in those systems, this type of addition carries few consequences. If you did an import from another system or otherwise find that your repository is much larger than it should be, here is how you can find and remove large objects.
+
+이 것은 Subversion이나 Perforce 저장소를 Git으로 변환할 때에도 문제가 된다. 그 시스템에서 전체 히스토리를 내려받는 것이 아니기 때문에 결국 걸러내야 한다(오역확인 요). 다른 VCS에서 Git 자장소로 임포트하려고 하는데 Git 저장소의 공간이 충분하지 않으면 너무 큰 개체는 찾아서 삭제해야 한다.
 
 Be warned: this technique is destructive to your commit history. It rewrites every commit object downstream from the earliest tree you have to modify to remove a large file reference. If you do this immediately after an import, before anyone has started to base work on the commit, you’re fine — otherwise, you have to notify all contributors that they must rebase their work onto your new commits.
 
+주의: 이 것을 하다가 커밋 히스토리를 망쳐버릴 수 있다. 삭제하거나 수정할 파일이 들어 있는 커밋 이후에 추가된 커밋은 모두 재작성된다. 프로젝트를 임포트하자마자 하는 것은 괜찮다. 아직 아무도 새 저장소를 기반으로 일을 하지 않기 때문이다. 그게 아니면 히스토리를 Rebase한다고 관련된 사람 모두에게 알려야 한다.
+
 To demonstrate, you’ll add a large file into your test repository, remove it in the next commit, find it, and remove it permanently from the repository. First, add a large object to your history:
+
+이 시나리오를 살펴보기 위해 먼저 저장소에 크기가 큰 파일을 넣고 다음 커밋에서는 삭제할 것이다. 그리고 나서 그 파일을 다시 찾아 저장소에서 삭제한다. 먼저 히스토리에 크기가 큰 개체를 추가한다:
 
 	$ curl http://kernel.org/pub/software/scm/git/git-1.6.3.1.tar.bz2 > git.tbz2
 	$ git add git.tbz2
@@ -1131,6 +1178,8 @@ To demonstrate, you’ll add a large file into your test repository, remove it i
 
 Oops — you didn’t want to add a huge tarball to your project. Better get rid of it:
 
+tar 파일을 넣었지만 너무 크기 때문에 다시 삭제한다:
+
 	$ git rm git.tbz2 
 	rm 'git.tbz2'
 	$ git commit -m 'oops - removed large tarball'
@@ -1140,6 +1189,8 @@ Oops — you didn’t want to add a huge tarball to your project. Better get rid
 
 Now, `gc` your database and see how much space you’re using:
 
+`gc` 명령으로 최적화하고 나서 저장소 크기가 얼마나 되는지 확인한다:
+
 	$ git gc
 	Counting objects: 21, done.
 	Delta compression using 2 threads.
@@ -1148,6 +1199,8 @@ Now, `gc` your database and see how much space you’re using:
 	Total 21 (delta 3), reused 15 (delta 1)
 
 You can run the `count-objects` command to quickly see how much space you’re using:
+
+`count-objects` 명령은 사용하는 용량이 얼마나 되는지 알려준다:
 
 	$ git count-objects -v
 	count: 4
@@ -1160,7 +1213,11 @@ You can run the `count-objects` command to quickly see how much space you’re u
 
 The `size-pack` entry is the size of your packfiles in kilobytes, so you’re using 2MB. Before the last commit, you were using closer to 2K — clearly, removing the file from the previous commit didn’t remove it from your history. Every time anyone clones this repository, they will have to clone all 2MB just to get this tiny project, because you accidentally added a big file. Let’s get rid of it.
 
+`size-pack` 항목의 숫자가 Packfile의 크기다. 단위가 킬로바이트라서 이 Pacfile의 크기는 약 2MB이다. 큰 파일을 커밋하기 전에는 약 2K 였다. 파일을 지우고 커밋해도 히스토리에서 삭제되지 않는다. 어쨌든 큰 파일이 하나 들어 있기 때문에 너무 작은 프로젝트인데도 Clone하는 사람마다 2MB씩 필요하다. 이제 그 파일을 삭제해 보자.
+
 First you have to find it. In this case, you already know what file it is. But suppose you didn’t; how would you identify what file or files were taking up so much space? If you run `git gc`, all the objects are in a packfile; you can identify the big objects by running another plumbing command called `git verify-pack` and sorting on the third field in the output, which is file size. You can also pipe it through the `tail` command because you’re only interested in the last few largest files:
+
+먼저 파일을 찾는다. 뭐, 지금은 무슨 파일인지 이미 알고 있지만 모른다고 가정한다. 어떤 파일이 용량이 큰지 어떻게 찾아 낼까? 게다가 `git gc`를 실행했다면 모든 개체는 Packfile 안에 있어서 더 찾기 어렵다. Plumbing 명령어 `git verify-pack`로 파일과 그 크기 정보를 수집하고 세번째 필드를 기준으로 그 결과를 정렬한다. 세번째 필드가 파일 크기다. 가장 큰 파일 몇 개만 삭제할 것이기 때문에 tail 명령으로 가장 큰 파일 3개만 골라낸다.
 
 	$ git verify-pack -v .git/objects/pack/pack-3f8c0...bb.idx | sort -k 3 -n | tail -3
 	e3f094f522629ae358806b17daf78246c27c007b blob   1486 734 4667
@@ -1169,16 +1226,22 @@ First you have to find it. In this case, you already know what file it is. But s
 
 The big object is at the bottom: 2MB. To find out what file it is, you’ll use the `rev-list` command, which you used briefly in Chapter 7. If you pass `--objects` to `rev-list`, it lists all the commit SHAs and also the blob SHAs with the file paths associated with them. You can use this to find your blob’s name:
 
+마지막에 있는 개체가 2MB 로 가장 크다. 이제 그 파일이 정확히 무슨 파일인지 알아 내야 한다. 7 장에서 소개했던 `rev-list` 명령에 `--objects` 옵션을 추가하면 커밋의 SHA 값과 Blob 개채의 파일이름, SHA 값을 보여준다. 그 결과에서 해당 Blob의 이름을 찾는다:
+
 	$ git rev-list --objects --all | grep 7a9eb2fb
 	7a9eb2fba2b1811321254ac360970fc169ba2330 git.tbz2
 
 Now, you need to remove this file from all trees in your past. You can easily see what commits modified this file:
+
+히스토리에 있는 모든 Tree 개체에서 이 파일을 삭제해야 한다. 먼저 이 파일을 수정한 커밋을 찾아 본다:
 
 	$ git log --pretty=oneline -- git.tbz2
 	da3f30d019005479c99eb4c3406225613985a1db oops - removed large tarball
 	6df764092f3e7c8f5f94cbe08ee5cf42e92a0289 added git tarball
 
 You must rewrite all the commits downstream from `6df76` to fully remove this file from your Git history. To do so, you use `filter-branch`, which you used in Chapter 6:
+
+이 파일을 히스토리에서 완전히 삭제하면 `6df76` 이후 커밋은 모두 재작성된다. 이 것은 6장에서 배운 `filter-branch` 명령으로 한다:
 
 	$ git filter-branch --index-filter \
 	   'git rm --cached --ignore-unmatch git.tbz2' -- 6df7640^..
@@ -1188,7 +1251,11 @@ You must rewrite all the commits downstream from `6df76` to fully remove this fi
 
 The `--index-filter` option is similar to the `--tree-filter` option used in Chapter 6, except that instead of passing a command that modifies files checked out on disk, you’re modifying your staging area or index each time. Rather than remove a specific file with something like `rm file`, you have to remove it with `git rm --cached` — you must remove it from the index, not from disk. The reason to do it this way is speed — because Git doesn’t have to check out each revision to disk before running your filter, the process can be much, much faster. You can accomplish the same task with `--tree-filter` if you want. The `--ignore-unmatch` option to `git rm` tells it not to error out if the pattern you’re trying to remove isn’t there. Finally, you ask `filter-branch` to rewrite your history only from the `6df7640` commit up, because you know that is where this problem started. Otherwise, it will start from the beginning and will unnecessarily take longer.
 
+`--index-filter` 옵션은 6장에서 배운 `--tree-filter`와 비슷한 옵션이다. `--tree-filter`는 디스크에 Checkout해서 파일을 수정하지만 `--index-filter` 는 Staging Area에서 수정한다. 삭제도 `rm file` 명령이 아니라 `git rm --cached` 명령으로 삭제한다. 디스크에서 삭제하는 것이 아니라 Index에서 삭제하는 것인데 이렇게 하는 이유는 속도가 빠르기 때문이다. Filter를 실행할 때마다 각 리비전을 디스크에 Checkout하지 않기 때문에 이 것이 울트라 캡숑 더 빠르다. 즉, `--tree-filter`로도 같은 것을 할 수 있다. 단지 느릴 뿐이다. 그리고 `git rm` 명령에 `--ignore-unmatch` 옵션을 주면 파일이 없는 경우에 에러를 출력하지 않는다. 마지막으로 문제가 생긴 것은 `6df7640` 커밋부터라서 `filter-branch` 명령에 `6df7640` 커밋부터 재작성하라고 알려줘야 한다. 그렇지 않으면 첫 커밋부터 시작해서 불필요한 것까지 재작성해 버린다.
+
 Your history no longer contains a reference to that file. However, your reflog and a new set of refs that Git added when you did the `filter-branch` under `.git/refs/original` still do, so you have to remove them and then repack the database. You need to get rid of anything that has a pointer to those old commits before you repack:
+
+히스토리에서는 더이상 그 파일을 참조하지 않는다. 하지만 Reflog나 filter-branch를 실행할 때 생기는 참조가 있다. `filter-branch`는 `.git/refs/original` 디렉토리에 실행될 때의 상태를 저장한다. 그래서 이 파일도 삭제하고 데이터베이스를 다시 압축해야 한다. 압축하기 전에 해당 개체를 가리키는 참조는 모두 없애야 한다:
 
 	$ rm -Rf .git/refs/original
 	$ rm -Rf .git/logs/
@@ -1201,6 +1268,8 @@ Your history no longer contains a reference to that file. However, your reflog a
 
 Let’s see how much space you saved.
 
+공간이 얼마나 절약됐는지 확인한다:
+
 	$ git count-objects -v
 	count: 8
 	size: 2040
@@ -1212,8 +1281,15 @@ Let’s see how much space you saved.
 
 The packed repository size is down to 7K, which is much better than 2MB. You can see from the size value that the big object is still in your loose objects, so it’s not gone; but it won’t be transferred on a push or subsequent clone, which is what is important. If you really wanted to, you could remove the object completely by running `git prune --expire`.
 
+압축된 저장소의 크기는 7K로 내려갔다. 2MB보다 한참 작다. 하지만 size 항목은 아직 압축되지 않는 Loose 개체의 크기를 나타내는데 그 항목이 아직 크다. 아직 완전히 제거된 것은 아니다. 하지만 이 개체는 Push할 수도 Clone할 수도 없다. 이 점이 중요하다. 정말로 완전히 삭제하려면 `git prune --expire` 명령으로 삭제해야 한다.
+
 ## Summary / 요약 ##
 
 You should have a pretty good understanding of what Git does in the background and, to some degree, how it’s implemented. This chapter has covered a number of plumbing commands — commands that are lower level and simpler than the porcelain commands you’ve learned about in the rest of the book. Understanding how Git works at a lower level should make it easier to understand why it’s doing what it’s doing and also to write your own tools and helping scripts to make your specific workflow work for you.
 
+Git이 내부적으로 어떻게 동작하는지 잘 배웠고 어떻게 구현됐는지까지 어느 정도 알게 됐을 것이다. 이 장은 저수준 명령어인 Plumbing 명령어들을 설명했다. 다른 장에서 우리가 배웠던 Porcelain 명령어보다는 단순하다. Git이 내부적으로 어떻게 동작하는 지를 알면 Git이 왜 그렇게 하는 가를 더 쉽게 이해할 수 있을 뿐만 아니라 개인적으로 필요한 도구나 스크립트를 만들어 자신의 Workflow를 개선할 수 있다.
+
 Git as a content-addressable filesystem is a very powerful tool that you can easily use as more than just a VCS. I hope you can use your newfound knowledge of Git internals to implement your own cool application of this technology and feel more comfortable using Git in more advanced ways.
+
+Git은 Content-addressble 파일 시스템이기 때문에 VCS 이상의 일을 할 수 있는 매우 강력한 도구다. 나는 독자가 새로 배운 Git 내부에 대한 지식을 활용해서 필요한 어플리케이션을 만들었으면 좋겠다. 그리고 진정 Git을 꼼꼼하고 디테일하게 다룰 수 있게 되길 바란다.
+
