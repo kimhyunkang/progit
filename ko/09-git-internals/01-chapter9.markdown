@@ -1,34 +1,20 @@
-# Git Internals / Git의 내부구조 #
+# Git의 내부구조 #
 
-You may have skipped to this chapter from a previous chapter, or you may have gotten here after reading the rest of the book — in either case, this is where you’ll go over the inner workings and implementation of Git. I found that learning this information was fundamentally important to understanding how useful and powerful Git is, but others have argued to me that it can be confusing and unnecessarily complex for beginners. Thus, I’ve made this discussion the last chapter in the book so you could read it early or later in your learning process. I leave it up to you to decide.
+여기까지 다 읽고 왔든 건너 뛰고 왔든 간에 지금 펼친 9장은 Git이 어떻게 구현돼 있고 그 내부에서는 어떻게 동작하는지 살펴볼 것이다. Git이 얼마나 유용하고 강력한지 깊이 이해하려면 9장의 내용을 꼭 알아야 한다. 초보자에게 9장은 너무 혼란스럽고 불필요하다고 이야기하는 사람들도 있다. 하여 필자는 본 내용을 책의 가장 마지막에 두었고 독자가 스스로 먼저 볼지 나중에 볼지 선택할 수 있도록 하였다.
 
-여기까지 다 읽고 왔든 건너 뛰고 왔든 간에 지금 펼친 9장은 Git이 어떻게 구현돼 있고 내부적으로 어떻게 동작하는지 살펴볼 것이다. Git이 얼마나 유용하고 강력한지 알려면 9장의 내용을 꼭 알아야 한다. 초보자에게 9장은 너무 혼란스럽고 불필요하다고 이야기하는 사람들도 있다. 그래서 이 내용을 책의 가장 마지막에 넣었고 독자가 스스로 먼저 볼지 나중에 볼지 선택할 수 있도록 하였다.
+자 이제 본격적으로 살펴보자. 우선 Git은 기본적으로 Content-addressable 파일 시스템이고 그 위에 VCS 사용자 인터페이스가 있는 구조다. 뭔가 깔끔한 정의는 아니지만 이 말이 무슨 의미인지는 차차 알아갈 것이다.
 
-Now that you’re here, let’s get started. First, if it isn’t yet clear, Git is fundamentally a content-addressable filesystem with a VCS user interface written on top of it. You’ll learn more about what this means in a bit.
+Git의 초년기에는 (1.5 이전 버전) 사용자 인터페이스가 훨씬 복잡했었다. VCS가 아니라 파일 시스템을 강조했기 때문이었다. 최근 몇 년간 Git은 다른 VCS 처럼 쉽고 간결하게 사용자 인터페이스를 다듬어 왔다. 하지만 복잡하고 배우기 어렵다는 선입견이 여전하다.
 
-자 이제 본격적으로 살펴보자. 우선 Git은 기본적으로 Content-addressable 파일 시스템이고 그 위에 VCS 사용자 인터페이스가 있는 구조다. 뭔가 깔끔한 정의는 아니지만 이 말이 무슨 의미인가는 차차 알게 될 것이다.
+우선 Content-addressable 파일 시스템은 정말 대단한 것이므로 먼저 다룰 것이다. 그리고 나서 데이터 전송 원리를 배우고 마지막에는 저장소를 관리하는 법까지 배우게 될 것이다.
 
-In the early days of Git (mostly pre 1.5), the user interface was much more complex because it emphasized this filesystem rather than a polished VCS. In the last few years, the UI has been refined until it’s as clean and easy to use as any system out there; but often, the stereotype lingers about the early Git UI that was complex and difficult to learn.
+## Plumbing 명령과 Porcelain 명령 ##
 
-Git의 초년기에는 (1.5 이전 버전) 사용자 인터페이스가 훨씬 복잡했었다. VCS가 아니라 파일 시스템을 강조했기 때문이었다. 최근 몇 년간 Git은 다른 VCS 처럼 쉽고 간결하게 사용자 인터페이스를 다듬어 왔다. 하지만 복잡하고 배우기 어렵다는 선입견은 여전하다.
-
-The content-addressable filesystem layer is amazingly cool, so I’ll cover that first in this chapter; then, you’ll learn about the transport mechanisms and the repository maintenance tasks that you may eventually have to deal with.
-
-Content-addressable 파일 시스템은 정말 대단한 것이므로 우선 먼저 다룰 것이다. 그리고 나서 Transport 원리를 배우고 결국 저장소를 관리하는 법까지 배우게 될 것이다.
-
-## Plumbing and Porcelain / Plumbing 명령과 Porcelain 명령 ##
-
-This book covers how to use Git with 30 or so verbs such as `checkout`, `branch`, `remote`, and so on. But because Git was initially a toolkit for a VCS rather than a full user-friendly VCS, it has a bunch of verbs that do low-level work and were designed to be chained together UNIX style or called from scripts. These commands are generally referred to as "plumbing" commands, and the more user-friendly commands are called "porcelain" commands.
-
-이 책에서는 `checkout`, `branch`, `remote`와 같은 30여가지의 Git 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 명령어 여러개를 Unix 스타일로 함께 엮어서 실행하거나 스크립트에서 호출될 수 있도록 디자인됐다. 이러한 저수준의 명령어는 "Plumbing" 명령어라고 부르고 좀 더 사용자 친화적인 명령어는 "Porcelain" 명령어라고 부른다.
-
-The book’s first eight chapters deal almost exclusively with porcelain commands. But in this chapter, you’ll be dealing mostly with the lower-level plumbing commands, because they give you access to the inner workings of Git and help demonstrate how and why Git does what it does. These commands aren’t meant to be used manually on the command line, but rather to be used as building blocks for new tools and custom scripts.
+이 책에서는 `checkout`, `branch`, `remote`와 같은 30여가지의 Git 명령을 사용하였다. Git은 사실 사용자 친화적인 VCS이기 보다는 VCS로도 사용할 수 있는 툴킷이었기 때문에 저수준의 일을 처리할 수 있는 수 많은 명령어를 갖고 있다. 명령어 여러 개를 Unix 스타일로 함께 엮어서 실행하거나 스크립트에서 호출될 수 있도록 디자인됐다. 이러한 저수준의 명령어는 "Plumbing" 명령어라고 부르고 좀 더 사용자 친화적인 명령어는 "Porcelain" 명령어라고 부른다.
 
 이 책의 앞 8개 장은 Porcelain 명령만 사용했다. 하지만 이 장에서는 저수준의 Plumbing 명령을 주로 사용할 것이다. 이 명령으로 Git의 내부구조에 접근할 수 있고 실제로 왜, 그렇게 작동하는지도 살펴볼 수 있다. Plumbing 명령은 직접 커맨드라인에서 실행하기보다 새로운 도구를 만들거나 각자 필요한 스크립트를 작성할 때 사용한다.
 
-When you run `git init` in a new or existing directory, Git creates the `.git` directory, which is where almost everything that Git stores and manipulates is located. If you want to back up or clone your repository, copying this single directory elsewhere gives you nearly everything you need. This entire chapter basically deals with the stuff in this directory. Here’s what it looks like:
-
-새로 만든 디렉토리나 이미 파일이 있는 디렉토리에서 `git init` 명령을 실행하면 Git은 데이터를 저장하고 관리하는 `.git` 디렉토리를 만든다. 이 디렉토리를 복사하기만 해도 저장소가 백업된다. 이 장은 기본적으로 이 디렉토리에 대한 내용들을 다루고 있다. 디렉토리 구조는 다음과 같다:
+새로 만든 디렉토리나 이미 파일이 있는 디렉토리에서 `git init` 명령을 실행하면 Git은 데이터를 저장하고 관리하는 `.git` 디렉토리를 만든다. 이 디렉토리를 복사하기만 해도 저장소가 백업된다. 이 장은 기본적으로 이 디렉토리에 대한 내용을 다루고 있다. 디렉토리 구조는 다음과 같다:
 
 	$ ls
 	HEAD
@@ -41,18 +27,12 @@ When you run `git init` in a new or existing directory, Git creates the `.git` d
 	objects/
 	refs/
 
-You may see some other files in there, but this is a fresh `git init` repository — it’s what you see by default. The `branches` directory isn’t used by newer Git versions, and the `description` file is only used by the GitWeb program, so don’t worry about those. The `config` file contains your project-specific configuration options, and the `info` directory keeps a global exclude file for ignored patterns that you don’t want to track in a .gitignore file. The `hooks` directory contains your client- or server-side hook scripts, which are discussed in detail in Chapter 6.
-
-파일이 몇개 있어 빈 디렉토리는 아니지만 실제로 `git init`을 하고 난 직후의 기본적인 새 저장소의 모습이다. `branches` 디렉토리는 Git의 최신 버전에서 사용하지 않고 `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용하기 때문에 이 둘은 무시해도 된다. `config` 파일은 해당 프로젝트에만 적용되는 설정 옵션이 들어 있고, `info` 디렉토리는 .gitingore 파일 처럼 무시할 파일의 패턴을 적어 두는 곳이다. 하지만 .gitignore 파일과는 달리 Git으로 관리되지 않는다. `hook` 디렉토리는 클라이언트 훅이나 서버 훅을 넣는다. 관련 내용은 7장에서 다루었다.
-
-This leaves four important entries: the `HEAD` and `index` files and the `objects` and `refs` directories. These are the core parts of Git. The `objects` directory stores all the content for your database, the `refs` directory stores pointers into commit objects in that data (branches), the `HEAD` file points to the branch you currently have checked out, and the `index` file is where Git stores your staging area information. You’ll now look at each of these sections in detail to see how Git operates.
+파일이 몇 개 있어 완전히 빈 디렉토리는 아니지만 `git init`을 하고 난 직후의 기본적인 빈 새 저장소의 모습이다. `branches` 디렉토리는 Git의 최신 버전에서 사용하지 않고 `description` 파일은 기본적으로 GitWeb 프로그램에서만 사용하기 때문에 이 둘은 무시해도 된다. `config` 파일은 해당 프로젝트에만 적용되는 설정 옵션이 들어 있고, `info` 디렉토리는 .gitingore 파일 처럼 무시할 파일의 패턴을 적어 두는 곳이다. 하지만 .gitignore 파일과는 달리 Git으로 관리되지 않는다. `hook` 디렉토리는 클라이언트 훅이나 서버 훅을 넣는다. 관련 내용은 7장에서 다루었다.
 
 이제 남은 네 가지 항목은 모두 중요한 항목이다. `HEAD`와 `index` 파일, `objects`와 `refs` 디렉토리가 남았다. 이 네 항목이 Git의 핵심이다. `objects` 디렉토리는 모든 컨텐트를 저장하는 데이터베이스이다. `refs` 디렉토리에는 커밋 개체의 포인터를 저장한다. `HEAD` 파일은 현재 Checkout한 브랜치를 가리키고 `index` 파일은 Staging Area의 정보를 저장한다. 이 네가지 항목을 자세히 살펴보면 Git이 어떻게 동작하는지 알게 될 것이다.
 
-## Git Objects / Git 개체 ##
+## Git 개체 ##
 
-Git is a content-addressable filesystem. Great. What does that mean?
-It means that at the core of Git is a simple key-value data store. You can insert any kind of content into it, and it will give you back a key that you can use to retrieve the content again at any time. To demonstrate, you can use the plumbing command `hash-object`, which takes some data, stores it in your `.git` directory, and gives you back the key the data is stored as. First, you initialize a new Git repository and verify that there is nothing in the `objects` directory:
 
 Git은 Content-addressible 파일시스템이다. 대단하지 않은가? 이게 무슨 말이냐 하면 Git은 단순한 Key-Value 데이터 저장소라는 것이다. 어떤 형식의 데이터라도 집어넣을 수 있고 해당 Key로 언제든지 데이터를 다시 가져올 수 있다. Plumbing 명령어 `hash-object`에 데이터를 주면 `.git` 디렉토리에 저장하고 그 key를 알려준다. 우선 Git 저장소를 새로 만들고 `objects` 디렉토리에 아무 것도 없는지 확인한다:
 
@@ -67,48 +47,36 @@ Git은 Content-addressible 파일시스템이다. 대단하지 않은가? 이게
 	$ find .git/objects -type f
 	$
 
-Git has initialized the `objects` directory and created `pack` and `info` subdirectories in it, but there are no regular files. Now, store some text in your Git database:
-
-Git은 `objects` 디렉토리를 만들고 그 밑에 `pack`과 `info` 디렉토리도 만들었다. 그 디렉토리는 빈 디렉토리일 뿐 파일은 아무것도 없다. Git 데이터베이스에 텍스트 파일을 저장해보자:
+Git은 `objects` 디렉토리를 만들고 그 밑에 `pack`과 `info` 디렉토리도 만들었다. 그 디렉토리는 빈 디렉토리일 뿐 파일은 아직 아무것도 없다. Git 데이터베이스에 텍스트 파일을 저장해보자:
 
 	$ echo 'test content' | git hash-object -w --stdin
 	d670460b4b4aece5915caf5c68d12f560a9fe3e4
 
-The `-w` tells `hash-object` to store the object; otherwise, the command simply tells you what the key would be. `--stdin` tells the command to read the content from stdin; if you don’t specify this, `hash-object` expects the path to a file. The output from the command is a 40-character checksum hash. This is the SHA-1 hash — a checksum of the content you’re storing plus a header, which you’ll learn about in a bit. Now you can see how Git has stored your data:
-
-이 명령은 표준입력으로 들어오는 데이터를 저장하는 예이다. `-w` 옵션을 줘야 저장하고 `-w`가 없으면 저장하지 않고 key만 보여준다. 그리고 `--stdin` 옵션을 주면 표준입력으로 데이터를 읽도록 지시하는 것이다. 이 옵션이 없으면 파일 경로를 알려줘야 한다. `hash-object` 명령이 출력하는 것은 40 자 길이의 체크섬 해시다. 이 해시는 헤더 정보와 데이터 모두에 대한 SHA-1 해시이다. 헤더 정보는 차차 자세히 살펴볼 것이다. 이제 Git이 저장한 데이터를 알아 보자:
+이 명령은 표준입력으로 들어오는 데이터를 저장하는 예이다. `-w` 옵션을 줘야 저장하고 `-w`가 없으면 저장하지 않고 key만 보여준다. 그리고 `--stdin` 옵션을 주면 표준입력으로 데이터를 읽도록 지시하는 것이다. 이 옵션이 없으면 파일 경로를 알려줘야 한다. `hash-object` 명령이 출력하는 것은 40 자 길이의 체크섬 해시다. 이 해시는 헤더 정보와 데이터 모두에 대한 SHA-1 해시이다. 헤더 정보는 차차 자세히 살펴볼 것이다. 이제 Git이 저장한 데이터를 알아보자:
 
 	$ find .git/objects -type f 
 	.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4
 
 You can see a file in the `objects` directory. This is how Git stores the content initially — as a single file per piece of content, named with the SHA-1 checksum of the content and its header. The subdirectory is named with the first 2 characters of the SHA, and the filename is the remaining 38 characters.
 
-`objects` 디렉토리에 파일이 하나 새로 생겼다. Git은 데이터를 저장하는 방법은 파일을 하나 만들고 그 파일에 저장한다. 그리고 데이터와 헤더로 생성한 SHA-1 체크섬으로 파일 이름을 짓는다. 해시의 처음 두 글자를 따서 디렉토리 이름을 짓고 나머지 38 글자는 파일 이름이 된다.
+`objects` 디렉토리에 파일이 하나 새로 생겼다. Git이 데이터를 저장하는 방법은 파일을 하나 만들어 그 파일에 저장한다. 그리고 데이터와 헤더로 생성한 SHA-1 체크섬으로 파일 이름을 짓는다. 해시의 처음 두 글자를 따서 디렉토리 이름을 짓고 나머지 38 글자는 파일 이름이 된다.
 
-You can pull the content back out of Git with the `cat-file` command. This command is sort of a Swiss army knife for inspecting Git objects. Passing `-p` to it instructs the `cat-file` command to figure out the type of content and display it nicely for you:
-
-`cat-file` 명령으로 저장한 데이터를 불러올 수 있다. 이 명령은 Git 개체를 살펴보고 싶을 때 맥가이버칼 처럼 사용할 수 있다. `cat-file` 명령에 `-p` 옵션을 주면 파일의 내용이 출력된다:
+`cat-file` 명령으로 저장한 데이터를 불러올 수 있다. 이 명령은 Git 개체를 살펴보고 싶을 때 맥가이버칼처럼 사용할 수 있다. `cat-file` 명령에 `-p` 옵션을 주면 파일의 내용을 출력한다:
 
 	$ git cat-file -p d670460b4b4aece5915caf5c68d12f560a9fe3e4
 	test content
 
-Now, you can add content to Git and pull it back out again. You can also do this with content in files. For example, you can do some simple version control on a file. First, create a new file and save its contents in your database:
-
-다시 한 번 데이터를 Git 저장소에 추가하고 불러와 보자. 버전관리하는 것을 이해하기 좋도록 이번에는 파일을 만들어서 저장해 보자. 우선 새 파일을 하나 만들고 Git 저장소에 저장한다:
+다시 한 번 데이터를 Git 저장소에 추가하고 불러와 보자. Git이 파일을 버전관리하는 방식을 이해하기 위한 상황을 가정하여 파일을 만들어서 저장해 보자. 우선 새 파일을 하나 만들고 Git 저장소에 저장한다:
 
 	$ echo 'version 1' > test.txt
 	$ git hash-object -w test.txt 
 	83baae61804e65cc73a7201a7252750c76066a30
 
-Then, write some new content to the file, and save it again:
-
-그리고 파일을 수정하고 다시 저장한다:
+그리고 그 파일을 수정하고 다시 저장한다:
 
 	$ echo 'version 2' > test.txt
 	$ git hash-object -w test.txt 
 	1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
-
-Your database contains the two new versions of the file as well as the first content you stored there:
 
 이제 데이터베이스에는 데이터가 두 가지 버전으로 저장돼 있다:
 
@@ -117,15 +85,11 @@ Your database contains the two new versions of the file as well as the first con
 	.git/objects/83/baae61804e65cc73a7201a7252750c76066a30
 	.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4
 
-Now you can revert the file back to the first version
-
 파일의 내용을 첫 번째 버전으로 되돌리려면 다음과 같이 한다:
 
 	$ git cat-file -p 83baae61804e65cc73a7201a7252750c76066a30 > test.txt 
 	$ cat test.txt 
 	version 1
-
-or the second version:
 
 다시 두 번째 버전을 적용하려면 다음과 같이 한다:
 
@@ -135,37 +99,29 @@ or the second version:
 
 But remembering the SHA-1 key for each version of your file isn’t practical; plus, you aren’t storing the filename in your system — just the content. This object type is called a blob. You can have Git tell you the object type of any object in Git, given its SHA-1 key, with `cat-file -t`:
 
-파일의 SHA-1 키를 외워서 사용하기기는 정말 쉽지 않다. 게다가 원래 파일의 이름도 저장하지 않았다. 단지 파일 내용만 저장했을 뿐이다. 이런 종류의 개체를 Blob이라고 부른다. `cat-file -t` 명령으로 해당 개체가 무슨 타입인지 확인할 수 있다:
+파일의 SHA-1 키를 외워서 사용하는 것은 결코 쉬운 일이 아니다. 게다가 원래 파일의 이름을 저장하지도 않았다. 단지 파일 내용만 저장했을 뿐이다. 이런 종류의 개체를 Blob 개체라고 부른다. `cat-file -t` 명령으로 해당 개체가 무슨 타입인지 확인할 수 있다:
 
 	$ git cat-file -t 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a
 	blob
 
-### Tree Objects / Tree 개체 ###
+### Tree 개체 ###
 
-The next type you’ll look at is the tree object, which solves the problem of storing the filename and also allows you to store a group of files together. Git stores content in a manner similar to a UNIX filesystem, but a bit simplified. All the content is stored as tree and blob objects, with trees corresponding to UNIX directory entries and blobs corresponding more or less to inodes or file contents. A single tree object contains one or more tree entries, each of which contains a SHA-1 pointer to a blob or subtree with its associated mode, type, and filename. For example, the most recent tree in the simplegit project may look something like this:
-
-다음으로 살펴볼 것은 Tree 개체이다. 이 Tree 개체로 파일 이름을 저장할 수 있고 파일을 여러개를 한번에 저장할 수도 있다. Git은 유닉스 파일 시스템과 비슷한 방법으로 저장하지만 좀 더 단순하다. 모든 것을 Tree와 Blob 개체로 저장한다. Tree는 유닉스의 디렉토리에 대응되고 Blob은 Inode나 일반 파일에 대응된다. Tree 개체 하나는 항목을 여러개 가질 수 있다. 그리고 그 항목은 Blob 개체나 하위 Tree 개체를 가리키는 SHA-1 포인터, 파일 모드, 개체 타입, 파일 이름을 갖고 있다. simplegit 프로젝트의 마지막 Tree 개체를 살펴 보자:
+다음으로 살펴볼 것은 Tree 개체이다. 이 Tree 개체로 파일 이름을 저장할 수 있고 파일 여러 개를 한 번에 저장할 수도 있다. Git은 유닉스 파일 시스템과 비슷한 방법으로 저장하지만 좀 더 단순하다. 모든것을 Tree와 Blob 개체로 저장한다. Tree는 유닉스의 디렉토리에 대응되고 Blob은 Inode나 일반 파일에 대응된다. Tree 개체 하나는 항목을 여러 개 가질 수 있다. 그리고 그 항목은 Blob 개체나 하위 Tree 개체를 가리키는 SHA-1 포인터, 파일 모드, 개체 타입, 파일 이름을 갖고 있다. simplegit 프로젝트의 마지막 Tree 개체를 살펴 보자:
 
 	$ git cat-file -p master^{tree}
 	100644 blob a906cb2a4a904a152e80877d4088654daad0c859      README
 	100644 blob 8f94139338f9404f26296befa88755fc2598c289      Rakefile
 	040000 tree 99f1a6d12cb4b6f19c8655fca46c3ecf317074e0      lib
 
-The `master^{tree}` syntax specifies the tree object that is pointed to by the last commit on your `master` branch. Notice that the `lib` subdirectory isn’t a blob but a pointer to another tree:
-
 `master^{tree}` 구문은 `master` 브랜치가 가리키는 Tree 개체를 말한다. `lib` 디렉토리는 Blob이 아니고 다른 Tree 개체를 가리킨다는 점을 주목하자:
 
 	$ git cat-file -p 99f1a6d12cb4b6f19c8655fca46c3ecf317074e0
 	100644 blob 47c6340d6459e05787f644c2447d2595f5d3a54b      simplegit.rb
 
-Conceptually, the data that Git is storing is something like Figure 9-1.
-
 Git이 저장하는 데이터는 대강 그림 9-1과 같다.
 
 Insert 18333fig0901.png 
 Figure 9-1. 단순화한 Git 데이터 모델.
-
-You can create your own tree. Git normally creates a tree by taking the state of your staging area or index and writing a tree object from it. So, to create a tree object, you first have to set up an index by staging some files. To create an index with a single entry — the first version of your text.txt file — you can use the plumbing command `update-index`. You use this command to artificially add the earlier version of the test.txt file to a new staging area. You must pass it the `--add` option because the file doesn’t yet exist in your staging area (you don’t even have a staging area set up yet) and `--cacheinfo` because the file you’re adding isn’t in your directory but is in your database. Then, you specify the mode, SHA-1, and filename:
 
 자신만의 Tree 개체를 만들 수도 있다. Git은 일반적으로 Staging Area(Index)의 상태 대로 Tree 개체를 만들고 기록하고 한다. 그래서 Tree 개체를 만들려면 Staging Area에 파일을 추가해서 Index를 만들어 줘야 한다. 우선 Plumbing 명령 `update-index`로 `test.txt` 파일만 들어 있는 Index를 만든다. 이 명령으로 test.txt 파일을 인위적으로 Staging Area에 추가하는 것이다. 아직 Staging Area에 없는 파일 이기 때문에 `--add` 옵션을 꼭 줘야 한다(사실 아직 Staging Area도 설정하지 않았다). 그리고 디렉토리에 있는 파일이 아니라 데이터베이스에만 있는 파일을 추가하는 것이기 때문에 `--cacheinfo` 옵션이 필요하다. 그리고 파일 모드, SHA-1 해시, 파일 이름을 지정해준다:
 
@@ -174,25 +130,19 @@ You can create your own tree. Git normally creates a tree by taking the state of
 
 In this case, you’re specifying a mode of `100644`, which means it’s a normal file. Other options are `100755`, which means it’s an executable file; and `120000`, which specifies a symbolic link. The mode is taken from normal UNIX modes but is much less flexible — these three modes are the only ones that are valid for files (blobs) in Git (although other modes are used for directories and submodules).
 
-여기서 파일 모드는 보통의 파일을 나타내는 `100644`로 지정했다. 실행파일이라면 `100755`로 지정하고, 심볼릭 링크라면 `120000`으로 지정한다. 이런 파일 모드는 유닉스에서 가져오긴 했지만 전부 가져오진 않았다. Blob 파일에는 이 세 가지 모드만 사용한된다. 디렉토리나 서브모듈에는 다른 모드를 사용한다.
+여기서 파일 모드는 보통의 파일을 나타내는 `100644`로 지정했다. 실행파일이라면 `100755`로 지정하고, 심볼릭 링크라면 `120000`으로 지정한다. 이런 파일 모드는 유닉스에서 가져오긴 했지만 모드의 기능을 전부 사용하지는 않는다. Blob 파일에는 이 세 가지 모드만 사용한다. 디렉토리나 서브모듈에는 다른 모드를 사용한다.
 
-Now, you can use the `write-tree` command to write the staging area out to a tree object. No `-w` option is needed — calling `write-tree` automatically creates a tree object from the state of the index if that tree doesn’t yet exist:
-
-이제 Staging Area을 Tree 개체로 저장하려면 `write-tree` 명령을 사용한다. `write-tree` 명령은 Tree 개체가 없으면 자동으로 생성하므로 `-w` 옵션이 필요 없다:
+이제 Staging Area를 Tree 개체로 저장하려면 `write-tree` 명령을 사용한다. `write-tree` 명령은 Tree 개체가 없으면 자동으로 생성하므로 `-w` 옵션이 필요 없다:
 
 	$ git write-tree
 	d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	$ git cat-file -p d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	100644 blob 83baae61804e65cc73a7201a7252750c76066a30      test.txt
 
-You can also verify that this is a tree object:
-
 이 개체가 Tree 개체라는 것을 다음 명령으로 확인한다:
 
 	$ git cat-file -t d8329fc1cc938780ffdd9f94e0d364e0ea74f579
 	tree
-
-You’ll now create a new tree with the second version of test.txt and a new file as well:
 
 파일을 새로 하나 추가하고 test.txt 파일의 두 번째 버전을 만들어 새 Tree 개체를 만들어 보자:
 
@@ -200,20 +150,14 @@ You’ll now create a new tree with the second version of test.txt and a new fil
 	$ git update-index test.txt 
 	$ git update-index --add new.txt 
 
-Your staging area now has the new version of test.txt as well as the new file new.txt. Write out that tree (recording the state of the staging area or index to a tree object) and see what it looks like:
-
 새 파일인 new.txt와 새 버전의 test.txt 파일까지 Staging Area에 추가했다. 현재 상태의 Staging Area를 새로운 Tree 개체로 기록하고 어떻게 보이는지 살펴보자:
 
-(번역 확인: 앞서 write-tree에서 -w 옵션이 불필요 하다는 말이 `hash-object -w` 로 기록하지 않아도 새로 blob 데이터를 만든다는 이야기인지, Tree 개체의 기록에 대한 이야기인지 확인이 필요하다)
-(번역 확인: hash-object는 -w를 줘야 진짜로 저장하지만 write-tree는 그런거 없어도 진짜로 저장한다는 의미로 생각함, blob 개체도 tree 개체도 저장한다는 의미인 것 같고 이는 -w의 유무와 관계 없어보임 )
 
 	$ git write-tree
 	0155eb4229851634a0f03eb265b69f5a2d56f341
 	$ git cat-file -p 0155eb4229851634a0f03eb265b69f5a2d56f341
 	100644 blob fa49b077972391ad58037050f2a75f74e3671e92      new.txt
 	100644 blob 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a      test.txt
-
-Notice that this tree has both file entries and also that the test.txt SHA is the "version 2" SHA from earlier (`1f7a7a`). Just for fun, you’ll add the first tree as a subdirectory into this one. You can read trees into your staging area by calling `read-tree`. In this case, you can read an existing tree into your staging area as a subtree by using the `--prefix` option to `read-tree`:
 
 이 Tree 개체는 파일이 두 개 있고 test.txt 파일의 SHA 값도 두번째 버전인 `1f7a7a1`이다. 재미난 걸 해보자. 처음에 만든 Tree 개체를 하위 디렉토리로 만들어 보자. `read-tree` 명령으로 Tree 개체를 읽어 Staging Area에 추가할 수 있다. Tree 개체를 하위 디렉토리로 추가하려면 `--prefix` 옵션을 준다:
 
@@ -225,27 +169,19 @@ Notice that this tree has both file entries and also that the test.txt SHA is th
 	100644 blob fa49b077972391ad58037050f2a75f74e3671e92      new.txt
 	100644 blob 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a      test.txt
 
-If you created a working directory from the new tree you just wrote, you would get the two files in the top level of the working directory and a subdirectory named `bak` that contained the first version of the test.txt file. You can think of the data that Git contains for these structures as being like Figure 9-2.
-
-지금 만든 Tree 개체로 Working Directory를 만들면 파일이 두 개와 `bak`이라는 하위 디렉토리가 있을 것이다. 그리고 `bak` 디렉토리 안에는 test.txt 파일의 제일 첫 버전이 들어 있을 것이다. Git은 그림 9-2 과 같은 구조로 데이터를 저장한다고 생각하면 된다.
+지금 만든 Tree 개체로 Working Directory를 만들면 파일이 두 개와 `bak`이라는 하위 디렉토리가 있을 것이다. 그리고 `bak` 디렉토리 안에는 test.txt 파일의 처음 버전이 들어 있을 것이다. Git은 그림 9-2 과 같은 구조로 데이터를 저장한다고 생각하면 된다.
 
 Insert 18333fig0902.png 
 Figure 9-2. Git 데이터 구조.
 
-### Commit Objects / 커밋 개체 ###
-
-You have three trees that specify the different snapshots of your project that you want to track, but the earlier problem remains: you must remember all three SHA-1 values in order to recall the snapshots. You also don’t have any information about who saved the snapshots, when they were saved, or why they were saved. This is the basic information that the commit object stores for you.
+### 커밋 개체 ###
 
 각기 다른 Snapshot을 나태내는 Tree 개체를 세 개 만들었다. 하지만 여전히 이 Snapshot을 불러 내려면 SHA-1 값을 기억하고 있어야 한다. 또한 Snapshot을 누가, 언제, 왜 저장했는지에 대한 정보가 아예 없다. 이런 정보는 Commit 개체에 저장된다:
-
-To create a commit object, you call `commit-tree` and specify a single tree SHA-1 and which commit objects, if any, directly preceded it. Start with the first tree you wrote:
 
 Commit 개체는`commit-tree` 명령으로 만든다. 이 명령에 Commit 개체에 대한 설명과 Tree 개체의 SHA-1 값 한 개를 넘겨준다. 앞서 저장한 첫 번째 Tree를 가지고 만들어보면 아래와 같다:
 
 	$ echo 'first commit' | git commit-tree d8329f
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d
-
-Now you can look at your new commit object with `cat-file`:
 
 새로 생긴 Commit 개체를 `cat-file` 명령으로 확인해보자:
 
@@ -256,11 +192,7 @@ Now you can look at your new commit object with `cat-file`:
 
 	first commit
 
-The format for a commit object is simple: it specifies the top-level tree for the snapshot of the project at that point; the author/committer information pulled from your `user.name` and `user.email` configuration settings, with the current timestamp; a blank line, and then the commit message.
-
 Commit 개체의 형식은 간단하다. 해당 Snapshot에서 최상단 Tree를 하나 가리키고 `user.name`과 `user.email` 설정에서 가져온 Author/Committer 정보, 시간정보, 그리고 한 줄 띄운 다음 커밋 메시지가 들어 있다.
-
-Next, you’ll write the other two commit objects, each referencing the commit that came directly before it:
 
 이제 Commit 개체를 두 개 더 만들어 보자. 각 Commit 개체는 이전 개체를 가리키도록 한다:
 
@@ -269,9 +201,7 @@ Next, you’ll write the other two commit objects, each referencing the commit t
 	$ echo 'third commit'  | git commit-tree 3c4e9c -p cac0cab
 	1a410efbd13591db07496601ebc7a059dd55cfe9
 
-Each of the three commit objects points to one of the three snapshot trees you created. Oddly enough, you have a real Git history now that you can view with the `git log` command, if you run it on the last commit SHA-1:
-
-세 Commit 개체는 각각 해당 Snapshot을 나타내는 Tree 개체를 하나씩 가리키고 있다. 이상해 보이겠지만 진짜 Git 히스토리를 만들 었다. 마지막 Commit 개체의 SHA-1 값을 주고 `git log` 명령을 실행하면 아래와 같이 출력한다:
+세 Commit 개체는 각각 해당 Snapshot을 나타내는 Tree 개체를 하나씩 가리키고 있다. 이상해 보이겠지만 우리는 진짜 Git 히스토리를 만들었다. 마지막 커밋 개체의 SHA-1 값을 주고 `git log` 명령을 실행하면 아래와 같이 출력한다:
 
 	$ git log --stat 1a410e
 	commit 1a410efbd13591db07496601ebc7a059dd55cfe9
@@ -302,8 +232,6 @@ Each of the three commit objects points to one of the three snapshot trees you c
 	 test.txt |    1 +
 	 1 files changed, 1 insertions(+), 0 deletions(-)
 
-Amazing. You’ve just done the low-level operations to build up a Git history without using any of the front ends. This is essentially what Git does when you run the `git add` and `git commit` commands — it stores blobs for the files that have changed, updates the index, writes out trees, and writes commit objects that reference the top-level trees and the commits that came immediately before them. These three main Git objects — the blob, the tree, and the commit — are initially stored as separate files in your `.git/objects` directory. Here are all the objects in the example directory now, commented with what they store:
-
 놀랍지 않은가! 방금 우리는 고수준 명령어 없이 저수준의 명령으로만 Git 히스토리를 만들었다. 지금 한 일이 `git add`와 `git commit` 명령을 실행했을 때 Git 내부에서 일어나는 일이다. Git은 변경된 파일을 Blob 개체로 저장하고 현 Index에 따라서 Tree 개체를 만든다. 그리고 이전 Commit 개체와 최상위 Tree 개체를 참고해서 Commit 개체를 만든다. 즉 Blob, Tree, Commit 개체가 Git의 주요 개체이고 이 개체들은 각각 `.git/objects` 디렉토리에 저장된다. 위의 예에서 생성한 개체는 다음과 같다:
 
 	$ find .git/objects -type f
@@ -318,31 +246,23 @@ Amazing. You’ve just done the low-level operations to build up a Git history w
 	.git/objects/fa/49b077972391ad58037050f2a75f74e3671e92 # new.txt
 	.git/objects/fd/f4fc3344e67ab068f836878b6c4951e3b15f3d # commit 1
 
-If you follow all the internal pointers, you get an object graph something like Figure 9-3.
-
 내부의 포인터를 따라가면 그림 9-3과 같은 그래프가 그려진다.
 
 Insert 18333fig0903.png 
 Figure 9-3. Git 저장소 내의 모든 개체.
 
-### Object Storage / 개체 저장소 ###
+### 개체 저장소 ###
 
-I mentioned earlier that a header is stored with the content. Let’s take a minute to look at how Git stores its objects. You’ll see how to store a blob object — in this case, the string "what is up, doc?" — interactively in the Ruby scripting language. You can start up interactive Ruby mode with the `irb` command:
-
-내용과 함께 헤더도 저장된다고 얘기 했었다. 잠시 Git이 개체를 어떻게 저장하는지 살펴보자. "what is up, doc?" 스트링을 가지고 대화형 Ruby 쉘 `irb` 명령어로 흉내 내 볼 것이다:
+내용과 함께 헤더도 저장된다고 얘기했었다. 잠시 Git이 개체를 어떻게 저장하는지 살펴보자. "what is up, doc?" 문자열을 가지고 대화형 Ruby 쉘 `irb` 명령어로 흉내내 볼 것이다:
 
 	$ irb
 	>> content = "what is up, doc?"
 	=> "what is up, doc?"
 
-Git constructs a header that starts with the type of the object, in this case a blob. Then, it adds a space followed by the size of the content and finally a null byte:
-
-Git은 개체의 타입을 시작으로 헤더를 만든다. 그 다음에 스페이스 문자 하나, 내용의 크기, 마지막에 null 문자가 추가된다:
+Git은 개체의 타입을 시작으로 헤더를 만든다. 그 다음에 공백 문자 하나, 내용의 크기, 마지막에 널 문자가 추가된다:
 
 	>> header = "blob #{content.length}\0"
 	=> "blob 16\000"
-
-Git concatenates the header and the original content and then calculates the SHA-1 checksum of that new content. You can calculate the SHA-1 value of a string in Ruby by including the SHA1 digest library with the `require` command and then calling `Digest::SHA1.hexdigest()` with the string:
 
 Git은 헤더와 원래 내용을 붙이고 붙인 것으로 SHA-1 체크섬을 계산한다. `require`로 SHA1 라이브러리를 가져다가 Ruby에서도 흉내낼 수 있다. `require`로 라이브러리를 포함시키고 나서 `Digest::SHA1.hexdigest()`를 호출한다:
 
@@ -353,16 +273,12 @@ Git은 헤더와 원래 내용을 붙이고 붙인 것으로 SHA-1 체크섬을 
 	>> sha1 = Digest::SHA1.hexdigest(store)
 	=> "bd9dbf5aae1a3862dd1526723246b20206e5fc37"
 
-Git compresses the new content with zlib, which you can do in Ruby with the zlib library. First, you need to require the library and then run `Zlib::Deflate.deflate()` on the content:
-
 Git은 또 zlib으로 내용을 압축한다. Ruby에도 zlib 라이브러리가 있으니 Ruby에서도 할 수 있다. 라이브러리를 포함시키고 `Zlib::Deflate.deflate()`를 호출한다:
 
 	>> require 'zlib'
 	=> true
 	>> zlib_content = Zlib::Deflate.deflate(store)
 	=> "x\234K\312\311OR04c(\317H,Q\310,V(-\320QH\311O\266\a\000_\034\a\235"
-
-Finally, you’ll write your zlib-deflated content to an object on disk. You’ll determine the path of the object you want to write out (the first two characters of the SHA-1 value being the subdirectory name, and the last 38 characters being the filename within that directory). In Ruby, you can use the `FileUtils.mkdir_p()` function to create the subdirectory if it doesn’t exist. Then, open the file with `File.open()` and write out the previously zlib-compressed content to the file with a `write()` call on the resulting file handle:
 
 마지막으로 zlib으로 압축한 내용을 개체로 저장한다. SHA-1 값 중에서 맨 앞에 있는 두 자를 가져다 하위 디렉토리 이름으로 사용하고 나머지 38 자를 그 디렉토리 안에 있는 파일이름으로 사용한다. Ruby에서는 `FileUtils.mkdir_p()`로 하위 디렉토리의 존재를 보장하고 나서 `File.open()`으로 파일을 연다. 그리고 그 파일에 zlib으로 압축한 내용을 `write()` 함수로 저장한다.
 
@@ -375,19 +291,15 @@ Finally, you’ll write your zlib-deflated content to an object on disk. You’l
 	>> File.open(path, 'w') { |f| f.write zlib_content }
 	=> 32
 
-That’s it — you’ve created a valid Git blob object. All Git objects are stored the same way, just with different types — instead of the string blob, the header will begin with commit or tree. Also, although the blob content can be nearly anything, the commit and tree content are very specifically formatted.
+다 됐다. 이제 Git Blob 개체를 손으로 만들었다. Git 개체는 모두 이 방식으로 저장되며 단지 종류만 다를 뿐이다. Blob 개체가 아니면 헤더가 그냥 `commit`이나 `tree`로 시작하게 되는 것 뿐이다. Blob 개체는 여기서 보여준 것이랑 거의 전부지만 Commit이나 Tree 개체는 각기 다른 형식을 사용한다.
 
-다 됐다. 이제 Git Blob 개체를 손으로 만들었다. Git 개체는 모두 이 방식으로 저장되며 단지 타입만 다를 뿐이다. Blob 개체가 아니면 헤더가 그냥 `commit`이나 `tree`로 시작하게 되는 것 뿐이다. Blob 개체는 여기서 보여준 것이랑 거의 전부지만 Commit이나 Tree 개체는 각기 다른 형식을 사용한다.
-
-## Git References / Git 참조 ##
-
-You can run something like `git log 1a410e` to look through your whole history, but you still have to remember that `1a410e` is the last commit in order to walk that history to find all those objects. You need a file in which you can store the SHA-1 value under a simple name so you can use that pointer rather than the raw SHA-1 value.
+## Git 레퍼런스 ##
 
 `git log 1a410e` 라고 실행하면 전체 히스토리를 볼 수 있지만 여전히 `1a410e`를 기억해야 한다. 이 커밋은 마지막 커밋이기 때문에 히스토리를 따라 모든 개체를 조회할 수 있다. SHA-1 값을 날로 사용하는 것보다 쉬운 이름으로 된 포인터를 사용하는 것이 더 좋다. 즉 SHA-1 값을 쉬운 이름으로 저장한 파일이 필요하다.
 
 In Git, these are called "references" or "refs"; you can find the files that contain the SHA-1 values in the `.git/refs` directory. In the current project, this directory contains no files, but it does contain a simple structure:
 
-Git에서는 이런 것을 "참조"나 "refs"라고 부른다. `.git/refs` 디렉토리에 SHA-1 값이 들어 있는 파일이 있다. 현 프로젝트에는 아직 파일이 하나도 없지만 구조는 매우 단순하다:
+Git에서는 이런 것을 "레퍼런스" 또는 "refs"라고 부른다. `.git/refs` 디렉토리에 SHA-1 값이 들어 있는 파일이 있다. 현 프로젝트에 아직 레퍼런스는 하나도 없지만 그 구조는 매우 단순하다:
 
 	$ find .git/refs
 	.git/refs
@@ -396,34 +308,24 @@ Git에서는 이런 것을 "참조"나 "refs"라고 부른다. `.git/refs` 디�
 	$ find .git/refs -type f
 	$
 
-To create a new reference that will help you remember where your latest commit is, you can technically do something as simple as this:
-
-참조가 있으면 마지막 커밋이 무엇인지 기억하기 쉽다. 사실 내부적으로는 다음과 같이 단순하다:
+레퍼런스가 있으면 마지막 커밋이 무엇인지 기억하기 쉽다. 사실 내부적으로는 다음과 같이 단순하다:
 
 	$ echo "1a410efbd13591db07496601ebc7a059dd55cfe9" > .git/refs/heads/master
 
-Now, you can use the head reference you just created instead of the SHA-1 value in your Git commands:
-
-SHA-1 값 대신에 지금 만든 참조를 사용할 수 있다:
+SHA-1 값 대신에 지금 만든 레퍼런스를 사용할 수 있다:
 
 	$ git log --pretty=oneline  master
 	1a410efbd13591db07496601ebc7a059dd55cfe9 third commit
 	cac0cab538b970a37ea1e769cbbde608743bc96d second commit
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d first commit
 
-You aren’t encouraged to directly edit the reference files. Git provides a safer command to do this if you want to update a reference called `update-ref`:
-
-참조 파일을 직접 고치는 것은 좀 못 마땅하다. Git은 좀 더 안전하게 바꿀 수 있는 `update-ref` 명령을 가지고 있다:
+레퍼런스 파일을 직접 고치는 것은 좀 못마땅하다. Git은 좀 더 안전하게 바꿀 수 있는 `update-ref` 명령을 가지고 있다:
 
 	$ git update-ref refs/heads/master 1a410efbd13591db07496601ebc7a059dd55cfe9
 
-That’s basically what a branch in Git is: a simple pointer or reference to the head of a line of work. To create a branch back at the second commit, you can do this:
-
-Git의 브랜치는 단순히 포인터다. 기본적으로 하고 있는 일을 가리키는 참조일 뿐이다. 간단히 두번째 커밋을 가리키는 브랜치를 만들어 보자:
+Git의 브랜치는 단순히 포인터다. 기본적으로 하고 있는 일을 가리키는 레퍼런스일 뿐이다. 간단히 두 번째 커밋을 가리키는 브랜치를 만들어 보자:
 
 	$ git update-ref refs/heads/test cac0ca
-
-Your branch will contain only work from that commit down:
 
 브랜치는 직접 가리키는 커밋과 그 커밋으로 따라 갈 수 있는 모든 커밋을 포함한다:
 
@@ -431,45 +333,31 @@ Your branch will contain only work from that commit down:
 	cac0cab538b970a37ea1e769cbbde608743bc96d second commit
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d first commit
 
-Now, your Git database conceptually looks something like Figure 9-4.
-
 이제 Git 데이터베이스는 그림 9-4 처럼 보일 것이다.
 
 Insert 18333fig0904.png 
-Figure 9-4. 브랜치 참조가 추가된 Git 데이터베이스
-
-When you run commands like `git branch (branchname)`, Git basically runs that `update-ref` command to add the SHA-1 of the last commit of the branch you’re on into whatever new reference you want to create.
+Figure 9-4. 브랜치 레퍼런스가 추가된 Git 데이터베이스
 
 `git branch (branchname)` 명령을 실행하면 Git은 내부적으로 `update-ref` 명령을 실행한다. 입력받은 브랜치 이름과 현 브랜치의 마지막 커밋에서 SHA-1 값을 가져다 `update-ref` 명령을 실행하는 것이다.
 
-### The HEAD / HEAD ###
+### HEAD ###
 
-The question now is, when you run `git branch (branchname)`, how does Git know the SHA-1 of the last commit? The answer is the HEAD file. The HEAD file is a symbolic reference to the branch you’re currently on. By symbolic reference, I mean that unlike a normal reference, it doesn’t generally contain a SHA-1 value but rather a pointer to another reference. If you look at the file, you’ll normally see something like this:
-
-`git branch (branchname)` 명령을 실행하면 어떻게 Git은 마지막 커밋의 SHA-1 값을 아는 걸까? HEAD 파일은 현 브랜치를 가리키는 간접(symbolic) 참조다. 간접 참조이기 때문에 다른 참조와 다르게 생겼다. 이 참조은 다른 참조를 가리키는 것이라서 SHA-1 값이 없다. 파일을 열어 보면 다음과 같이 생겼다:
+`git branch (branchname)` 명령을 실행하면 어떻게 Git은 마지막 커밋의 SHA-1 값을 아는 걸까? HEAD 파일은 현 브랜치를 가리키는 간접(symbolic) 레퍼런스다. 간접 레퍼런스이기 때문에 다른 레퍼런스와 다르게 생겼다. 이 레퍼런스은 다른 레퍼런스를 가리키는 것이라서 SHA-1 값이 없다. 파일을 열어 보면 다음과 같이 생겼다:
 
 	$ cat .git/HEAD 
 	ref: refs/heads/master
-
-If you run `git checkout test`, Git updates the file to look like this:
 
 `git checkout test`를 실행하면 Git은 HEAD 파일을 다음과 같이 바꾼다.
 
 	$ cat .git/HEAD 
 	ref: refs/heads/test
 
-When you run `git commit`, it creates the commit object, specifying the parent of that commit object to be whatever SHA-1 value the reference in HEAD points to.
-
 `git commit`을 실행하면 Commit 개체가 만들어 지는데, 지금 HEAD가 가리키고 있던 커밋의 SHA-1 값이 그 Commit 개체의 부모로 사용된다.
-
-You can also manually edit this file, but again a safer command exists to do so: `symbolic-ref`. You can read the value of your HEAD via this command:
 
 이 파일도 손으로 직접 편집할 수 있지만  `symbolic-ref` 라는 명령어가 있어서 좀 더 안전하게 사용할 수 있다. 이 명령으로 HEAD의 값을 읽을 수 있다:
 
 	$ git symbolic-ref HEAD
 	refs/heads/master
-
-You can also set the value of HEAD:
 
 HEAD의 값을 변경할 수도 있다:
 
@@ -477,20 +365,16 @@ HEAD의 값을 변경할 수도 있다:
 	$ cat .git/HEAD 
 	ref: refs/heads/test
 
-You can’t set a symbolic reference outside of the refs style:
-
 refs 형식에 맞지 않으면 수정할 수 없다:
 
 	$ git symbolic-ref HEAD test
 	fatal: Refusing to point HEAD outside of refs/
 
-### Tags / 태그 ###
+### 태그 ###
 
 You’ve just gone over Git’s three main object types, but there is a fourth. The tag object is very much like a commit object — it contains a tagger, a date, a message, and a pointer. The main difference is that a tag object points to a commit rather than a tree. It’s like a branch reference, but it never moves — it always points to the same commit but gives it a friendlier name.
 
-중요한 개체 타입을 모두 살펴봤지만 아직 하나 더 남았다. Tag 개체는 Commit 개체랑 매우 비슷하다. Commit 개체 처럼 누가, 언제 Tag를 달았는지 Tag 메시지는 무엇이고 어떤 커밋을 가리키는 지에 대한 정보가 포함된다. Tag 개체는 Tree 개체가 아니라 Commit 개체를 가리킨다는 것이 그 둘 간의 차이다. 브랜치 처럼 Commit 개체를 가리키지만 옮길 수는 없다. Tag 개체는 늘 그 이름이 뜻하는 커밋만 가리킨다.
-
-As discussed in Chapter 2, there are two types of tags: annotated and lightweight. You can make a lightweight tag by running something like this:
+중요한 개체 타입을 모두 살펴봤지만 남아 있는 것이 하나 더 있다. Tag 개체는 커밋 개체랑 매우 비슷하다. 커밋 개체 처럼 누가, 언제 Tag를 달았는지 Tag 메시지는 무엇이고 어떤 커밋을 가리키는 지에 대한 정보가 포함된다. Tag 개체는 Tree 개체가 아니라 커밋 개체를 가리킨다는 것이 그 둘의 차이다. 브랜치 처럼 커밋 개체를 가리키지만 옮길 수는 없다. Tag 개체는 늘 그 이름이 뜻하는 커밋만 가리킨다.
 
 2장에서 살펴봤듯이 Tag는 Annotated Tag와 Lightweight Tag 두 종류로 나뉜다. 먼저 다음과 같이 Lightweight Tag를 만들어 보자:
 
@@ -498,18 +382,14 @@ As discussed in Chapter 2, there are two types of tags: annotated and lightweigh
 
 That is all a lightweight tag is — a branch that never moves. An annotated tag is more complex, however. If you create an annotated tag, Git creates a tag object and then writes a reference to point to it rather than directly to the commit. You can see this by creating an annotated tag (`-a` specifies that it’s an annotated tag):
 
-Lightwieght Tag는 만들기 쉽다. 브랜치랑 비슷하지만 브랜치 처럼 옮길 수는 없다. 그리고 Annotated Tag는 좀 더 복잡하다. Annotated Tag를 만들면 Git은 Tag 개체를 만들고 거기에 커밋을 가리키는 참조를 저장한다. Annotated Tag는 커밋을 직접 가리키지 않고 Tag 개체를 가리킨다. `-a` 옵션을 주고 Annotated Tag를 만들어 확인할 수 있다.
+Lightwieght Tag는 만들기 쉽다. 브랜치랑 비슷하지만 브랜치처럼 옮길 수는 없다. 이에 비해 Annotated Tag는 좀 더 복잡하다. Annotated Tag를 만들면 Git은 Tag 개체를 만들고 거기에 커밋을 가리키는 레퍼런스를 저장한다. Annotated Tag는 커밋을 직접 가리키지 않고 Tag 개체를 가리킨다. `-a` 옵션을 주고 Annotated Tag를 만들어 확인할 수 있다.
 
 	$ git tag -a v1.1 1a410efbd13591db07496601ebc7a059dd55cfe9 -m 'test tag'
-
-Here’s the object SHA-1 value it created:
 
 Tag 개체의 SHA-1 값을 확인한다:
 
 	$ cat .git/refs/tags/v1.1 
 	9585191f37f7b0fb9444f35a9bf50de191beadc2
-
-Now, run the `cat-file` command on that SHA-1 value:
 
 `cat-file` 명령으로 해당 SHA-1 값의 내용을 조회한다:
 
@@ -521,23 +401,15 @@ Now, run the `cat-file` command on that SHA-1 value:
 
 	test tag
 
-Notice that the object entry points to the commit SHA-1 value that you tagged. Also notice that it doesn’t need to point to a commit; you can tag any Git object. In the Git source code, for example, the maintainer has added their GPG public key as a blob object and then tagged it. You can view the public key by running
-
-`object` 부분에 있는 SHA-1 값이 실제로 Tag를 단 커밋이다. 그리고 Commit 개체에 Tag를 다는 것이 아니라 Git 개체에 Tag를 다는 것이다. 그래서 모든 개체에 Tag를 달 수 있다. Git 프로제트에서는 관리자가 자신의 GPG 공개키를 Blob 개체로 추가하고 그 파일에 tag를 달아 둔다. 다음 명령으로 그 공개키를 확인할 수 있다:
+`object` 부분에 있는 SHA-1 값이 실제로 Tag를 단 커밋이다. 그리고 커밋 개체에 Tag를 다는 것이 아니라 Git 개체에 Tag를 다는 것이다. 그래서 모든 개체에 Tag를 달 수 있다. Git 프로젝트에서는 관리자가 자신의 GPG 공개키를 Blob 개체로 추가하고 그 파일에 Tag를 달아 둔다. 다음 명령으로 그 공개키를 확인할 수 있다:
 
 	$ git cat-file blob junio-gpg-pub
 
-in the Git source code repository. The Linux kernel repository also has a non-commit-pointing tag object — the first tag created points to the initial tree of the import of the source code.
+Linux Kernel 저장소에도 커밋이 아닌 다른 개체를 가리키는 Tag 개체가 있다. 그 Tag는 저장소에 처음으로 소스 코드를 임포트했을 때 그 첫 Tree 개체를 가리킨다.
 
-Linux Kernel 저장소에도 커밋이 아닌 다른 개체를 가리키는 Tag 개체가 있다. 그 저장소의 첫번째 Tag는 소스 코드를 임포트했을 때, 그때의 첫 Tree 개체를 가리킨다.
+### Remote 레퍼런스 ###
 
-### Remotes / Remote ###
-
-The third type of reference that you’ll see is a remote reference. If you add a remote and push to it, Git stores the value you last pushed to that remote for each branch in the `refs/remotes` directory. For instance, you can add a remote called `origin` and push your `master` branch to it:
-
-그리고 Remote 참조라는 것도 있다. Remote를 추가하고 푸시하면 Git은 각 브랜치마다 Push한 마지막 커밋이 무엇인지 `refs/remotes` 디렉토리에 저장한다. 예를 들어, `origin` 이라는 Remote를 추가하고 `master` 브랜치를 Push한다.
-
-(번역: 이전에 Remote를 원격 저장소로 번역했는데 이 부분도 좀 그렇네..)
+그리고 Remote 레퍼런스라는 것도 있다. Remote를 추가하고 Push하면 Git은 각 브랜치마다 Push한 마지막 커밋이 무엇인지 `refs/remotes` 디렉토리에 저장한다. 예를 들어, `origin` 이라는 Remote를 추가하고 `master` 브랜치를 Push 한다면:
 
 	$ git remote add origin git@github.com:schacon/simplegit-progit.git
 	$ git push origin master
@@ -548,20 +420,14 @@ The third type of reference that you’ll see is a remote reference. If you add 
 	To git@github.com:schacon/simplegit-progit.git
 	   a11bef0..ca82a6d  master -> master
 
-Then, you can see what the `master` branch on the `origin` remote was the last time you communicated with the server, by checking the `refs/remotes/origin/master` file:
-
-`origin`의 `master` 브랜치에서 서버와 마지막으로 교환한 커밋이 무었인지 확인하려면 `refs/remotes/origin/master` 파일을 확인한다:
+`origin`의 `master` 브랜치에서 서버와 마지막으로 교환한 커밋이 어떤 것인지 확인하려면 `refs/remotes/origin/master` 파일을 확인한다:
 
 	$ cat .git/refs/remotes/origin/master 
 	ca82a6dff817ec66f44342007202690a93763949
 
-Remote references differ from branches (`refs/heads` references) mainly in that they can’t be checked out. Git moves them around as bookmarks to the last known state of where those branches were on those servers.
+Remote 레퍼런스와 `refs/heads`에 있는 레퍼런스인 브랜치와 차이점은 Checkout할 수 없다는 것이다. 이 Remote 레퍼런스는 서버의 브랜치가 가리키고 있는 커밋이 무엇인지 적어둔 일종의 북마크이다.
 
-Remote 참조는 `refs/heads`에 있는 참조인 브랜치와 차이점은 Checkout할 수 없다는 것이다. 이 Remote 참조는 서버의 브랜치가 가리키고 있는 커밋이 무었인지 적어둔 일종의 북마크이다.
-
-## Packfiles / Pack 파일 ##
-
-Let’s go back to the objects database for your test Git repository. At this point, you have 11 objects — 4 blobs, 3 trees, 3 commits, and 1 tag:
+## Packfile ##
 
 테스트용 Git 저장소의 개체 데이터베이스를 다시 살펴보자. 아마 지금 개체는 모두 11개로 Blob 4개, Tree 3개, Commit 3개, Tag 1개가 있을 것이다:
 
@@ -578,9 +444,7 @@ Let’s go back to the objects database for your test Git repository. At this po
 	.git/objects/fa/49b077972391ad58037050f2a75f74e3671e92 # new.txt
 	.git/objects/fd/f4fc3344e67ab068f836878b6c4951e3b15f3d # commit 1
 
-Git compresses the contents of these files with zlib, and you’re not storing much, so all these files collectively take up only 925 bytes. You’ll add some larger content to the repository to demonstrate an interesting feature of Git. Add the repo.rb file from the Grit library you worked with earlier — this is about a 12K source code file:
-
-Git은 zlib으로 파일 내용을 압축하기 때문에 저장 공간이 많이 필요하지 않다. 그래서 이 데이터베이스에 저장된 파일은 겨우 925 바이트 밖에 되지 않는다. 크기가 큰 파일을 추가해서 이 기능의 효과를 좀 더 살펴 보자. 앞 장에서 사용했던 Grit 라이브러리에 들어 있는 repo.rb 파일을 을 추가한다. 이 파일의 크기는 약 12K이다.
+Git은 zlib으로 파일 내용을 압축하기 때문에 저장 공간이 많이 필요하지 않다. 그래서 이 데이터베이스에 저장된 파일은 겨우 925 바이트 밖에 되지 않는다. 크기가 큰 파일을 추가해서 이 기능의 효과를 좀 더 살펴 보자. 앞 장에서 사용했던 Grit 라이브러리에 들어 있는 repo.rb 파일을 추가한다. 이 파일의 크기는 약 12K이다.
 
 	$ curl http://github.com/mojombo/grit/raw/master/lib/grit/repo.rb > repo.rb
 	$ git add repo.rb 
@@ -591,8 +455,6 @@ Git은 zlib으로 파일 내용을 압축하기 때문에 저장 공간이 많�
 	 create mode 100644 repo.rb
 	 rewrite test.txt (100%)
 
-If you look at the resulting tree, you can see the SHA-1 value your repo.rb file got for the blob object:
-
 추가한 Tree 개체를 보면 repo.rb 파일의 SHA-1 값이 무엇인지 확인할 수 있다:
 
 	$ git cat-file -p master^{tree}
@@ -600,14 +462,10 @@ If you look at the resulting tree, you can see the SHA-1 value your repo.rb file
 	100644 blob 9bc1dc421dcd51b4ac296e3e5b6e2a99cf44391e      repo.rb
 	100644 blob e3f094f522629ae358806b17daf78246c27c007b      test.txt
 
-You can then use `git cat-file` to see how big that object is:
-
 개체의 크기도 `git cat-file` 명령으로 확인할 수 있다:
 
 	$ git cat-file -s 9bc1dc421dcd51b4ac296e3e5b6e2a99cf44391e
 	12898
-
-Now, modify that file a little, and see what happens:
 
 수정하면 어떻게 되는지 살펴보기 위해서 파일을 조금 수정해보자:
 
@@ -616,27 +474,19 @@ Now, modify that file a little, and see what happens:
 	[master ab1afef] modified repo a bit
 	 1 files changed, 1 insertions(+), 0 deletions(-)
 
-Check the tree created by that commit, and you see something interesting:
-
-수정한 커밋의 Tree 개체를 까보면 흥미로운 점을 발견할 수 있다:
+수정한 커밋의 Tree 개체를 확인해보면 흥미로운 점을 발견할 수 있다:
 
 	$ git cat-file -p master^{tree}
 	100644 blob fa49b077972391ad58037050f2a75f74e3671e92      new.txt
 	100644 blob 05408d195263d853f09dca71d55116663690c27c      repo.rb
 	100644 blob e3f094f522629ae358806b17daf78246c27c007b      test.txt
 
-The blob is now a different blob, which means that although you added only a single line to the end of a 400-line file, Git stored that new content as a completely new object:
-
 이 Blob 개체는 다른 개체다. 새 Blob 개체는 400 줄 이후에 한 줄이 더 추가된 새 것이다. Git은 완전히 새로운 Blob 개체를 만들어 저장한다:
 
 	$ git cat-file -s 05408d195263d853f09dca71d55116663690c27c
 	12908
 
-You have two nearly identical 12K objects on your disk. Wouldn’t it be nice if Git could store one of them in full but then the second object only as the delta between it and the first?
-
-그럼 약 12K 짜리 파일을 두 개 가지게 된다. 거의 같은 파일을 두 개나 가지게 되는 것이 못 마땅할 수도 있다. 처음 것과 두번째 것 사이의 차이점만 저장할 수 없을까?
-
-It turns out that it can. The initial format in which Git saves objects on disk is called a loose object format. However, occasionally Git packs up several of these objects into a single binary file called a packfile in order to save space and be more efficient. Git does this if you have too many loose objects around, if you run the `git gc` command manually, or if you push to a remote server. To see what happens, you can manually ask Git to pack up the objects by calling the `git gc` command:
+그럼 약 12K 짜리 파일을 두 개 가지게 된다. 거의 같은 파일을 두 개나 가지게 되는 것이 못 마땅할 수도 있다. 처음 것과 두 번째 것 사이의 차이점만 저장할 수 없을까?
 
 가능하다. Git이 처음 개체를 저장하는 형식은 Loose 개체 포멧이라고 부른다. 하지만 나중에 이 개체들을 파일 하나로 압축(Pack)할 수 있다. 그래서 공간을 절약하고 효율을 높일 수 있다. Loose 개체가 너무 많거나, `git gc` 명령을 실행했을 때, 그리고 원격 서버로 Push할 때 Git은 압축한다. `git gc` 명령을 실행해서 어떻게 압축되는지 살펴보자:
 
@@ -647,8 +497,6 @@ It turns out that it can. The initial format in which Git saves objects on disk 
 	Writing objects: 100% (17/17), done.
 	Total 17 (delta 1), reused 10 (delta 0)
 
-If you look in your objects directory, you’ll find that most of your objects are gone, and a new pair of files has appeared:
-
 `objects` 디렉토리를 열어보면 개체 대부분이 사라졌고 한 쌍의 파일이 새로 생긴 것을 확인할 수 있다.
 
 	$ find .git/objects -type f
@@ -658,15 +506,9 @@ If you look in your objects directory, you’ll find that most of your objects a
 	.git/objects/pack/pack-7a16e4488ae40c7d2bc56ea2bd43e25212a66c45.idx
 	.git/objects/pack/pack-7a16e4488ae40c7d2bc56ea2bd43e25212a66c45.pack
 
-The objects that remain are the blobs that aren’t pointed to by any commit — in this case, the "what is up, doc?" example and the "test content" example blobs you created earlier. Because you never added them to any commits, they’re considered dangling and aren’t packed up in your new packfile.
-
-아직 남아 있는 Blob 개체는 어떤 커밋도 참조하지 않는 개체다. 즉, "what is up, doc?"과 "test content" 예제에서 만들었던 개체이다. 어떤 커밋에도 추가되지 않으면 이 개체는 `dangling` 상태라고 취급되고 Packfile에 추가되지 않는다.
-
-The other files are your new packfile and an index. The packfile is a single file containing the contents of all the objects that were removed from your filesystem. The index is a file that contains offsets into that packfile so you can quickly seek to a specific object. What is cool is that although the objects on disk before you ran the `gc` were collectively about 12K in size, the new packfile is only 6K. You’ve halved your disk usage by packing your objects.
+아직 남아 있는 Blob 개체는 어떤 커밋도 가리키지 않는 개체다. 즉, "what is up, doc?"과 "test content" 예제에서 만들었던 개체이다. 어떤 커밋에도 추가되지 않으면 이 개체는 `dangling` 상태라고 취급되고 Packfile에 추가되지 않는다.
 
 새로 생긴 파일은 Packfile과 그 Index이다. 파일 시스템에서 삭제된 개체가 전부 이 Packfile에 저장된다. Index 파일은 빠르게 찾을 수 있도록 Packfile의 오프셋이 들어 있다. `git gc` 명령을 실행하기 전에 있던 파일 크기는 약 12K 정도 였었는데 새로 만들어진 Packfile은 겨우 6K에 불과하다. 짱이다. 개체를 압축하면 디스크 사용량은 절반으로 줄어든다.
-
-How does Git do this? When Git packs objects, it looks for files that are named and sized similarly, and stores just the deltas from one version of the file to the next. You can look into the packfile and see what Git did to save space. The `git verify-pack` plumbing command allows you to see what was packed up:
 
 어떻게 이런 일이 가능할까? 개체를 압축하면 Git은 먼저 이름이나 크기가 비슷한 파일을 찾는다. 그리고 두 파일을 비교해서 한 파일은 다른 부분만 저장한다. Git이 얼마나 공간을 절약해 주는지 Packfile을 열어 확인할 수 있다. `git verify-pack` 명령어는 압축한 것을 보여준다:
 
@@ -693,62 +535,41 @@ How does Git do this? When Git packs objects, it looks for files that are named 
 	chain length = 1: 1 object
 	pack-7a16e4488ae40c7d2bc56ea2bd43e25212a66c45.pack: ok
 
-Here, the `9bc1d` blob, which if you remember was the first version of your repo.rb file, is referencing the `05408` blob, which was the second version of the file. The third column in the output is the size of the object in the pack, so you can see that `05408` takes up 12K of the file but that `9bc1d` only takes up 7 bytes. What is also interesting is that the second version of the file is the one that is stored intact, whereas the original version is stored as a delta — this is because you’re most likely to need faster access to the most recent version of the file.
+`9bc1d1` Blob이 처음 추가한 `repo.rb` 파일인데, 이 Blob은 두 번째 버전인 `05408` Blob을 가리킨다. 개체에서 세 번째 컬럼은 압축된 개체의 크기를 나타낸다. `05408`의 크기는 12K지만 `9bc1d`는 7 바이트 밖에 안된다. 특이한 점은 원본을 그대로 저장하는 것이 첫 번째가 아니라 두 번째 버전이라는 것이다. 첫 번째 버전은 차이점만 저장된다. 보통 최신 버전에 접근하는 속도가 더 빨라야 하기 때문에 이렇게 하는 것이다.
 
-`9bc1d1` Blob이 처음 추가한 `repo.rb` 파일인데, 이 Blob은 두번째 버전인 `05408` Blob을 참조한다. 개체에서 세번째 컬럼은 압축된 개체의 크기를 나타낸다. `05408`의 크기는 12K지만 `9bc1d`는 7 바이트 밖에 안된다. 특이한 점은 원본을 그대로 저장하는 것이 첫번째가 아니라 두번째 버전이라는 것이다. 첫 번째 버전은 차이점만 저장된다. 보통 최신 버전에 접근하는 속도가 더 빨라야 하기 때문에 이렇게 하는 것이다.
+이 기능이 정말 죽여주는 점은 언제나 다시 압축할 수 있다는 것이다. Git은 자동으로 데이터베이스를 재압축해서 공간을 절약한다. 그리고 `git gc` 명령으로 언제나 직접 다시 압축할 수도 있다.
 
-The really nice thing about this is that it can be repacked at any time. Git will occasionally repack your database automatically, always trying to save more space. You can also manually repack at any time by running `git gc` by hand.
+## Refspec ##
 
-이 기능이 정말 죽여주는 점은 언제나 재압축할 수 있다는 것이다. Git은 자동으로 데이터베이스를 재압축해서 공간을 절약한다. 그리고 `git gc` 명령으로 언제나 직접 재압축할 수도 있다.
-
-## The Refspec / Refspec ##
-
-Throughout this book, you’ve used simple mappings from remote branches to local references; but they can be more complex.
-Suppose you add a remote like this:
-
-이책에서 원격 브랜치와 로컬 참조로 연결하는 것이 간단하다고 배웠지만 실제로는 좀 더 복잡하다. 다음과 같은 원격 저장소를 추가해보자:
+이 책에서 원격 브랜치와 로컬 레퍼런스로 연결하는 것이 간단하다고 배웠지만 실제로는 좀 더 복잡하다. 다음과 같은 원격 저장소를 추가해보자:
 
 	$ git remote add origin git@github.com:schacon/simplegit-progit.git
 
-It adds a section to your `.git/config` file, specifying the name of the remote (`origin`), the URL of the remote repository, and the refspec for fetching:
-
-이 명령은 `origin`이라는 저장소가 있고, 그 URL은 무었인지, Fetch할 Refspec은 무엇인지를 `.git/config` 파일에 추가한다.
+이 명령은 `origin`이라는 저장소가 있고, 그 URL은 무엇인지, Fetch할 Refspec은 무엇인지를 `.git/config` 파일에 추가한다.
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
 	       fetch = +refs/heads/*:refs/remotes/origin/*
 
-The format of the refspec is an optional `+`, followed by `<src>:<dst>`, where `<src>` is the pattern for references on the remote side and `<dst>` is where those references will be written locally. The `+` tells Git to update the reference even if it isn’t a fast-forward.
+Refspec 형식은 `+`와 `<src>:<dest>`로 돼 있다. `+`는 생략 가능하고,  `<src>`은 원격 저장소의 레퍼런스 패턴이고, `<dst>`는 매핑될 로컬 저장소의 레퍼런스 패턴이다. `+`가 없으면 Fast-forward가 아니면 업데이트되지 않는다.
 
-Refspec 형식은 `+`와 `<src>:<dest>`로 돼 있다. `+`는 생략 가능하고,  `<src>`은 원격 저장소의 참조 패턴이고, `<dst>`는 매핑될 로컬 저장소의 참조 패턴이다. `+`가 없으면 Fast-forward가 아니면 업데이트되지 않는다.
-
-In the default case that is automatically written by a `git remote add` command, Git fetches all the references under `refs/heads/` on the server and writes them to `refs/remotes/origin/` locally. So, if there is a `master` branch on the server, you can access the log of that branch locally via
-
-`git remote add` 명령은 알아서 생성한 설정대로 서버의 `refs/heads/`에 있는 참조를 가져다 `refs/remotes/origin/` 디렉토리에 만든다. 서버에 있는 `master` 브랜치는 로컬에서 다음과 같이 접근해 사용할 수 있다:
+`git remote add` 명령은 알아서 생성한 설정대로 서버의 `refs/heads/`에 있는 레퍼런스를 가져다 `refs/remotes/origin/` 디렉토리에 만든다. 서버에 있는 `master` 브랜치는 로컬에서 다음과 같이 접근해 사용할 수 있다:
 
 	$ git log origin/master
 	$ git log remotes/origin/master
 	$ git log refs/remotes/origin/master
 
-They’re all equivalent, because Git expands each of them to `refs/remotes/origin/master`.
-
 Git은 이 세개를 모두 `refs/remotes/origin/master`라고 해석하기 때문에 모두 같다.
 
-If you want Git instead to pull down only the `master` branch each time, and not every other branch on the remote server, you can change the fetch line to
-
-master 브랜치만 pull할 수 있게 만들려면 `fetch` 부분을 다음과 같이 바꿔준다. 그러면 다른 브랜치는 pull할 수 없다:
+`master` 브랜치만 Pull할 수 있게 만들려면 `fetch` 부분을 다음과 같이 바꿔준다. 그러면 다른 브랜치는 Pull할 수 없다:
 
 	fetch = +refs/heads/master:refs/remotes/origin/master
 
-This is just the default refspec for `git fetch` for that remote. If you want to do something one time, you can specify the refspec on the command line, too. To pull the `master` branch on the remote down to `origin/mymaster` locally, you can run
-
-이 것은 해당 원격 저장소에 `git fetch` 명령이 사용하는 자동 Refspec일 뿐이다. 명령을 실행할 때 다른 Refspec이 필요하면 그냥 인자로 넘기면 된다. 원격 브랜치 `master`를 로컬 브랜치 `origin/mymaster`로 가져오려면 다음과 같이 실행한다.
+이것은 해당 원격 저장소에 `git fetch` 명령이 사용하는 자동 Refspec일 뿐이다. 명령을 실행할 때 다른 Refspec이 필요하면 그냥 인자로 넘기면 된다. 원격 브랜치 `master`를 로컬 브랜치 `origin/mymaster`로 가져오려면 다음과 같이 실행한다.
 
 	$ git fetch origin master:refs/remotes/origin/mymaster
 
-You can also specify multiple refspecs. On the command line, you can pull down several branches like so:
-
-동시에 Refspec을 여러개 줄 수도 있다. 다음과 같이 한꺼번에 브랜치 여러개를 가져온다:
+동시에 Refspec을 여러 개 줄 수도 있다. 다음과 같이 한꺼번에 브랜치 여러 개를 가져온다:
 
 	$ git fetch origin master:refs/remotes/origin/mymaster \
 	   topic:refs/remotes/origin/topic
@@ -756,51 +577,35 @@ You can also specify multiple refspecs. On the command line, you can pull down s
 	 ! [rejected]        master     -> origin/mymaster  (non fast forward)
 	 * [new branch]      topic      -> origin/topic
 
-In this case, the  master branch pull was rejected because it wasn’t a fast-forward reference. You can override that by specifying the `+` in front of the refspec.
-
 여기서 `master` 브랜치는 Fast-forward가 아니라서 거절된다. Refspect 앞에 `+`를 추가하면 강제로 덮어쓴다.
 
-You can also specify multiple refspecs for fetching in your configuration file. If you want to always fetch the master and experiment branches, add two lines:
-
-설정 파일에도 Refspec을 여러개 적을 수 있다. 항상 `master`와 `experiment` 브랜치를 함께 가져오려면 둘 다 적어 준다:
+설정 파일에도 Refspec을 여러 개 적을 수 있다. 항상 `master`와 `experiment` 브랜치를 함께 가져오려면 둘 다 적어 준다:
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
 	       fetch = +refs/heads/master:refs/remotes/origin/master
 	       fetch = +refs/heads/experiment:refs/remotes/origin/experiment
 
-You can’t use partial globs in the pattern, so this would be invalid:
-
 하지만 Glob 패턴은 사용할 수 없다:
 
 	fetch = +refs/heads/qa*:refs/remotes/origin/qa*
 
-However, you can use namespacing to accomplish something like that. If you have a QA team that pushes a series of branches, and you want to get the master branch and any of the QA team’s branches but nothing else, you can use a config section like this:
-
-그대신 일종의 네임스페이스를 사용할 수 있다. 만약 QA 팀이 Push하는 브랜치가 있고 이 브랜치를 가져오게 하고 싶으면 다음과 같이 설정한다. 다음은 `master` 브랜치와 QA 팀의 브랜치만 가져오는 설정이다:
+그 대신 일종의 네임스페이스를 사용할 수 있다. 만약 QA 팀이 Push하는 브랜치가 있고 이 브랜치를 가져오게 하고 싶으면 다음과 같이 설정한다. 다음은 `master` 브랜치와 QA 팀의 브랜치만 가져오는 설정이다:
 
 	[remote "origin"]
 	       url = git@github.com:schacon/simplegit-progit.git
 	       fetch = +refs/heads/master:refs/remotes/origin/master
 	       fetch = +refs/heads/qa/*:refs/remotes/origin/qa/*
 
-If you have a complex workflow process that has a QA team pushing branches, developers pushing branches, and integration teams pushing and collaborating on remote branches, you can namespace them easily this way.
-
 이 방법으로 좀 더 복잡한 것도 가능하다. QA 팀뿐만 아니라, 일반 개발자, 통합 팀 등등이 사용하는 브랜치를 네임스페이스 별로 구분해 놓으면 좀 더 Git을 편리하게 사용할 수 있다.
 
-### Pushing Refspecs / Refspec Push하기 ###
-
-It’s nice that you can fetch namespaced references that way, but how does the QA team get their branches into a `qa/` namespace in the first place? You accomplish that by using refspecs to push.
+### Refspec Push하기 ###
 
 네임스페이스 별로 가져오는 방법은 끝내 주지만 어떻게 Push할까? QA 팀은 `qa/` 네임스페이스에 자신의 브랜치를 어떻게 올릴 수 있을까? Push할 때도 Refspec을 사용한다.
-
-If the QA team wants to push their `master` branch to `qa/master` on the remote server, they can run
 
 QA 팀은 `master` 브랜치를 원격 저장소에 `qa/master` 로 Push할 수 있다:
 
 	$ git push origin master:refs/heads/qa/master
-
-If they want Git to do that automatically each time they run `git push origin`, they can add a `push` value to their config file:
 
 `git push origin`을 실행할 때마다 Git이 자동으로 Push하게 하려면 다음과 같이 설정 파일에 `push` 항목을 추가한다:
 
@@ -809,29 +614,23 @@ If they want Git to do that automatically each time they run `git push origin`, 
 	       fetch = +refs/heads/*:refs/remotes/origin/*
 	       push = refs/heads/master:refs/heads/qa/master
 
-Again, this will cause a `git push origin` to push the local `master` branch to the remote `qa/master` branch by default.
-
 다시 말하지만 `git push origin`을 실행하면 로컬 브랜치 `master`가 원격 브랜치 `qa/master`로 Push된다.
 
-### Deleting References / 레퍼런스 삭제하기 ###
+### 레퍼런스 삭제하기 ###
 
-You can also use the refspec to delete references from the remote server by running something like this:
-
-Refspec으로 서버에 있는 참조를 삭제할 수 있다:
+Refspec으로 서버에 있는 레퍼런스를 삭제할 수 있다:
 
 	$ git push origin :topic
 
-Because the refspec is `<src>:<dst>`, by leaving off the `<src>` part, this basically says to make the topic branch on the remote nothing, which deletes it. 
-
 Refspec의 형식은 `<src>:<dst>`이니까 `<src>`를 비우면 `<dst>`를 비우라는 의미가 된다. 그래서 `<dst>`는 삭제된다.
 
-## Transfer Protocols / 데이터 전송 프로토콜 ##
+## 데이터 전송 프로토콜 ##
 
 Git can transfer data between two repositories in two major ways: over HTTP and via the so-called smart protocols used in the `file://`, `ssh://`, and `git://` transports. This section will quickly cover how these two main protocols operate.
 
 Git은 두 저장소간 데이터 전송을 할 때 주로 두 가지 종류의 프로토콜을 사용한다. 하나는 HTTP이며 다른 하나는 소위 정교한 프로토콜이라고 부를 수 있는 `file://`, `ssh://`, and `git://` 프로토콜을 사용한다. 주로 사용하는 이 두 가지 종류의 프로토콜이 어떻게 데이터를 전송하는지 간단히 살펴볼 것이다.
 
-### The Dumb Protocol / Dumb 프로토콜 ###
+### Dumb 프로토콜 ###
 
 Git transport over HTTP is often referred to as the dumb protocol because it requires no Git-specific code on the server side during the transport process. The fetch process is a series of GET requests, where the client can assume the layout of the Git repository on the server. Let’s follow the `http-fetch` process for the simplegit library:
 
@@ -903,7 +702,7 @@ If this comes back with a list of alternate URLs, Git checks for loose files and
 
 There is only one packfile on the server, so your object is obviously in there, but you’ll check the index file to make sure. This is also useful if you have multiple packfiles on the server, so you can see which packfile contains the object you need:
 
-현재 서버에는 하나의 Packfile이 있으며 당연히 개체는 이 파일 속에 있을 것이다. 확실히 확인해보기 위해 Packfile의 인덱스(Packfile이 포함한 파일의 목록)에서 다시 확인해보자. 서버에 여러개의 Packfile이 있는 경우 이런식으로 인덱스를 검색해 보면 찾고자 하는 개체가 속한 Packfile을 찾을 수 있다.
+현재 서버에는 하나의 Packfile이 있으며 당연히 개체는 이 파일 속에 있을 것이다. 확실히 확인해보기 위해 Packfile의 인덱스(Packfile이 포함한 파일의 목록)에서 다시 확인해보자. 서버에 여러 개의 Packfile이 있는 경우 이런식으로 인덱스를 검색해 보면 찾고자 하는 개체가 속한 Packfile을 찾을 수 있다.
 
 	=> GET objects/pack/pack-816a9b2334da9953e530f27bcac22082a9f5b835.idx
 	(4k of binary data)
@@ -936,13 +735,13 @@ The entire output of this process looks like this:
 	walk 085bb3bcb608e1e8451d4b2432f8ecbe6306e7e7
 	walk a11bef06a3f659402fe7563abf99ad00de2209e6
 
-### The Smart Protocol / Smart 프로토콜 ###
+### Smart 프로토콜 ###
 
 The HTTP method is simple but a bit inefficient. Using smart protocols is a more common method of transferring data. These protocols have a process on the remote end that is intelligent about Git — it can read local data and figure out what the client has or needs and generate custom data for it. There are two sets of processes for transferring data: a pair for uploading data and a pair for downloading data.
 
 HTTP 프로토콜은 매우 단순하다는 장점이 있으나 전송은 효율적이지 못하다. 데이터 전송에 Smart 프로토콜을 사용하는 것이 보통이다. 이 프로토콜은 원격 서버가 해 줄 일이 있다. 서버가 해 줄 일은 클라이언트가 어떤 데이터를 갖고 있고 어떤 데이터가 필요한지 분석하여 저장소의 데이터에서 보내줄 데이터를 생성할 수 있다. 데이터 전송을 위해서 크게 두 가지 과정이 있다. 하나는 데이터를 업로드 하는 것이고 다른 하나는 다운로드 하는 것이다.
 
-#### Uploading Data / 데이터 업로드 ####
+#### 데이터 업로드 ####
 
 To upload data to a remote process, Git uses the `send-pack` and `receive-pack` processes. The `send-pack` process runs on the client and connects to a `receive-pack` process on the remote side.
 
@@ -983,7 +782,7 @@ Git은 업데이트 할 레퍼런스의 예전 SHA, 새로운 SHA, 레퍼런스 
 
 	000Aunpack ok
 
-#### Downloading Data / 데이터 다운로드 ####
+#### 데이터 다운로드 ####
 
 When you download data, the `fetch-pack` and `upload-pack` processes are involved. The client initiates a `fetch-pack` process that connects to an `upload-pack` process on the remote side to negotiate what data will be transferred down.
 
@@ -991,7 +790,7 @@ When you download data, the `fetch-pack` and `upload-pack` processes are involve
 
 There are different ways to initiate the `upload-pack` process on the remote repository. You can run via SSH in the same manner as the `receive-pack` process. You can also initiate the process via the Git daemon, which listens on a server on port 9418 by default. The `fetch-pack` process sends data that looks like this to the daemon after connecting:
 
-원격 저장소에서 `upload-pack` 과정을 시작시키는 방법은 여러가지가 있다. SSH에서 `receive-pack` 과정 처럼 시작시킬수 있다. 기본적으로 9418 포트를 사용하는 Git 데몬을 이용하는 방법도 있다. 데몬에 연결되고 나면 `fetch-pack`은 다음과 같은 데이터를 전송한다:
+원격 저장소에서 `upload-pack` 과정을 시작시키는 방법은 여러 가지가 있다. SSH에서 `receive-pack` 과정 처럼 시작시킬수 있다. 기본적으로 9418 포트를 사용하는 Git 데몬을 이용하는 방법도 있다. 데몬에 연결되고 나면 `fetch-pack`은 다음과 같은 데이터를 전송한다:
 
 	003fgit-upload-pack schacon/simplegit-progit.git\0host=myserver.com\0
 
@@ -1032,39 +831,27 @@ That is a very basic case of the transfer protocols. In more complex cases, the 
 
 데이터 전송 프로토콜에 대하여 가장 기본적인 상황을 통해 간단하게 살펴 보았다. 클라이언트가 `multi_ack`나 `side-band`를 지원하는 더 복잡한 상황도 있다. 하지만 여기에서는 Smart 프로토콜 과정에서 사용하는 가장 기본이 되는 상황에 대해서만 다루었다.
 
-## Maintenance and Data Recovery / 운영 및 데이터 복구 ##
-
-Occasionally, you may have to do some cleanup — make a repository more compact, clean up an imported repository, or recover lost work. This section will cover some of these scenarios.
+## 운영 및 데이터 복구 ##
 
 언젠가는 저장소를 손수 정리해야 할 날이 올지도 모른다. 저장소를 좀 더 꼼꼼하게(Compact)하게 만들고, 다른 CVS에서 임포트하고 나서 그 잔재를 치운다던가, 아니면 문제가 생겨서 복구해야 할 수도 있다. 이 절은 이때 필요한 것을 설명한다.
 
-### Maintenance / 운영 ###
+### 운영 ###
 
-Occasionally, Git automatically runs a command called "auto gc". Most of the time, this command does nothing. However, if there are too many loose objects (objects not in a packfile) or too many packfiles, Git launches a full-fledged `git gc` command. The `gc` stands for garbage collect, and the command does a number of things: it gathers up all the loose objects and places them in packfiles, it consolidates packfiles into one big packfile, and it removes objects that aren’t reachable from any commit and are a few months old.
-
-Git은 때가 되면 자동으로 "auto gc" 명령을 실행한다. 물론 거의 실행되지 않는다. Loose 개체가 너무 많거나, Packfile 자체가 너무 많으면 Git은 그제서야 진짜로 `git gc` 명령을 실행한다. `gc` 명령은 Garbage Collect하는 명령이다. 이 명령은 Loose 개체를 모아서 Packfile에 저장하거나 작은 Packfile을 모아서 하나의 큰 Packfile에 저장한다. 그리고 아무런 커밋도 참조하지 않는 개체가 있고 그 상태가 오래 지속되면 그때 개체를 삭제한다.
-
-You can run auto gc manually as follows:
+Git은 때가 되면 자동으로 "auto gc" 명령을 실행한다. 물론 거의 실행되지 않는다. Loose 개체가 너무 많거나, Packfile 자체가 너무 많으면 Git은 그제서야 진짜로 `git gc` 명령을 실행한다. `gc` 명령은 Garbage Collect하는 명령이다. 이 명령은 Loose 개체를 모아서 Packfile에 저장하거나 작은 Packfile을 모아서 하나의 큰 Packfile에 저장한다. 그리고 아무런 커밋도 가리키지 않는 개체가 있고 그 상태가 오래 지속되면 그때 개체를 삭제한다.
 
 직접 "auto gc" 명령을 실행할 수도 있다:
 
 	$ git gc --auto
 
-Again, this generally does nothing. You must have around 7,000 loose objects or more than 50 packfiles for Git to fire up a real gc command. You can modify these limits with the `gc.auto` and `gc.autopacklimit` config settings, respectively.
-
 이 명령을 실행해도 보통은 아무일도 일어나지 않는다. Loose 개체가 7천개가 넘거나 Packfile이 50개가 넘지 않으면 Git은 실제로 `gc` 명령을 실행하지 않는다. 그리고 필요하면 `gc.auto`나 `gc.autopacklimit` 옵션으로 그 숫자를 조절할 수 있다:
 
-The other thing `gc` will do is pack up your references into a single file. Suppose your repository contains the following branches and tags:
-
-`gc`는 참조를 파일 하나로 압축한다. 예를 들어 저장소에 다음과 같은 브랜치와 Tag가 있다고 하자:
+`gc`는 레퍼런스를 파일 하나로 압축한다. 예를 들어 저장소에 다음과 같은 브랜치와 Tag가 있다고 하자:
 
 	$ find .git/refs -type f
 	.git/refs/heads/experiment
 	.git/refs/heads/master
 	.git/refs/tags/v1.0
 	.git/refs/tags/v1.1
-
-If you run `git gc`, you’ll no longer have these files in the `refs` directory. Git will move them for the sake of efficiency into a file named `.git/packed-refs` that looks like this:
 
 `git gc`를 실행하면 `refs`에 있는 파일들이 사라진다. 대신 Git은 그 파일을 `.git/packed-refs` 파일로 압축해서 효율을 높인다: 
 
@@ -1076,23 +863,15 @@ If you run `git gc`, you’ll no longer have these files in the `refs` directory
 	9585191f37f7b0fb9444f35a9bf50de191beadc2 refs/tags/v1.1
 	^1a410efbd13591db07496601ebc7a059dd55cfe9
 
-If you update a reference, Git doesn’t edit this file but instead writes a new file to `refs/heads`. To get the appropriate SHA for a given reference, Git checks for that reference in the `refs` directory and then checks the `packed-refs` file as a fallback. However, if you can’t find a reference in the `refs` directory, it’s probably in your `packed-refs` file.
-
-이 상태에서 참조를 수정하면 파일을 수정하는 게 아니라 `refs/heads` 폴더에 파일을 새로 만든다. Git은 참조가 가리키는 SHA 값을 찾을 때 먼저 `refs` 디렉토리에서 찾고 없으면 `packed-refs` 파일에서 찾는다. 그러니까 어떤 참조가 있는데 `refs` 디렉토리에 없다면 `packed-files`에 있을 것이다.
-
-Notice the last line of the file, which begins with a `^`. This means the tag directly above is an annotated tag and that line is the commit that the annotated tag points to.
+이 상태에서 레퍼런스를 수정하면 파일을 수정하는 게 아니라 `refs/heads` 폴더에 파일을 새로 만든다. Git은 레퍼런스가 가리키는 SHA 값을 찾을 때 먼저 `refs` 디렉토리에서 찾고 없으면 `packed-refs` 파일에서 찾는다. 그러니까 어떤 레퍼런스가 있는데 `refs` 디렉토리에서 찾을 수 없다면 `packed-refs`에 있을 것이다.
 
 마지막에 있는 `^`로 시작하는 줄을 살펴보자. 이 것은 해당 Tag가 Annotated Tag라는 것을 말해준다. 그 줄의 SHA 값은 Annotated Tag가 가리키는 커밋이다.
 
-### Data Recovery / 데이터 복구 ###
+### 데이터 복구 ###
 
-At some point in your Git journey, you may accidentally lose a commit. Generally, this happens because you force-delete a branch that had work on it, and it turns out you wanted the branch after all; or you hard-reset a branch, thus abandoning commits that you wanted something from. Assuming this happens, how can you get your commits back?
+Git을 사용하다 보면 커밋을 잃어 버리는 실수를 할 때도 있다. 보통 작업중인 브랜치를 강제로 삭제했거나, 어떤 커밋을 브랜치 밖으로 끄집어 내버렸거나, Hard-reset 하면 그렇게 될 수 있다. 어쨌든 원치 않게 커밋을 잃어 버리면 어떻게 다시 찾아야 할까?
 
-Git을 사용하다 보면 Commit을 잃어 버리는 실수를 할 때도 있다. 보통 작업중인 브랜치를 강제로 삭제했거나, 어떤 커밋을 브랜치 밖으로 끄집어 내버렸거나, Hard-reset 하면 그렇게 될 수 있다. 어쨌든 원치 않게 커밋을 잃어 버리면 어떻게 다시 찾아야 할까?
-
-Here’s an example that hard-resets the master branch in your test repository to an older commit and then recovers the lost commits. First, let’s review where your repository is at this point:
-
-`master` 브랜치를 예전 커밋으로 Hard-reset하고 그 것을 다시 복구해보자. 먼자 연습용 저장소를 만든다;
+`master` 브랜치를 예전 커밋으로 Hard-reset하고 그 것을 다시 복구해보자. 먼저 연습용 저장소를 만든다:
 
 	$ git log --pretty=oneline
 	ab1afef80fac8e34258ff41fc1b867c702daa24b modified repo a bit
@@ -1100,8 +879,6 @@ Here’s an example that hard-resets the master branch in your test repository t
 	1a410efbd13591db07496601ebc7a059dd55cfe9 third commit
 	cac0cab538b970a37ea1e769cbbde608743bc96d second commit
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d first commit
-
-Now, move the `master` branch back to the middle commit:
 
 `master` 브랜치를 예전 커밋으로 Reset한다:
 
@@ -1112,19 +889,13 @@ Now, move the `master` branch back to the middle commit:
 	cac0cab538b970a37ea1e769cbbde608743bc96d second commit
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d first commit
 
-You’ve effectively lost the top two commits — you have no branch from which those commits are reachable. You need to find the latest commit SHA and then add a branch that points to it. The trick is finding that latest commit SHA — it’s not like you’ve memorized it, right?
+그리하여 최근 커밋 두 개는 어떤 브랜치도 가리키지 않게 됐다. 잃어버렸다고 볼 수 있다. 그 두 커밋을 브랜치에 다시 포함시키려면 마지막 커밋이 무엇인지 찾아야 한다. SHA 값을 기억할리도 없고 뭔가 찾아낼 방법이 필요하다.
 
-그래서 최근 커밋 두 개는 어떤 브랜치도 가리키지 않게 됐다. 잃어 버렸다고 볼 수 있다. 그 두 커밋을 브랜치에 다시 포함시키려면 마지막 커밋이 무엇인지 찾아야 한다. SHA 값을 기억할리가 없고 뭔가 찾아낼 방법이 필요하다.
-
-Often, the quickest way is to use a tool called `git reflog`. As you’re working, Git silently records what your HEAD is every time you change it. Each time you commit or change branches, the reflog is updated. The reflog is also updated by the `git update-ref` command, which is another reason to use it instead of just writing the SHA value to your ref files, as we covered in the "Git References" section of this chapter earlier.  You can see where you’ve been at any time by running `git reflog`:
-
-보통 `git reflog` 명령을 사용하는게 가장 쉽다. HEAD가 가리키는 커밋이 바뀔때마다 Git은 자동으로 그 커밋이 무엇인지 저장한다. 커밋을 새로하거나 브랜치를 바꾸면 Reflog도 늘어 난다. 또한 "Git 참조" 절에서 배운 `git update-ref` 명령으로 손으로 Reflog를 남길 수 있다. 물론 `.git/HEAD` 파일을 직접 수정해도 된다(이부분 오역검토 요). `git reflog` 명령만 실행하면 언제나 발자취를 돌아 볼 수 있다:
+보통 `git reflog` 명령을 사용하는게 가장 쉽다. HEAD가 가리키는 커밋이 바뀔때마다 Git은 자동으로 그 커밋이 무엇이었는지 기록해둔다. 커밋을 새로하거나 브랜치를 바꾸면 Reflog도 늘어난다. 또한 "Git 레퍼런스" 절에서 배운 `git update-ref` 명령으로 직접 Reflog를 남길 수 있다. 물론 `.git/HEAD` 파일을 직접 수정해도 되지만 기록으로 남기기 위해 `git update-ref`를 사용한다. `git reflog` 명령만 실행하면 언제나 발자취를 돌아볼 수 있다:
 
 	$ git reflog
 	1a410ef HEAD@{0}: 1a410efbd13591db07496601ebc7a059dd55cfe9: updating HEAD
 	ab1afef HEAD@{1}: ab1afef80fac8e34258ff41fc1b867c702daa24b: updating HEAD
-
-Here we can see the two commits that we have had checked out, however there is not much information here.  To see the same information in a much more useful way, we can run `git log -g`, which will give you a normal log output for your reflog.
 
 Checkout 했었던 커밋 두 개만 보여 주는데 구체적인 정보까지 보여주진 않는다. 좀 더 자세히 보려면 `git log -g` 명령을 사용해야 한다. 이 명령은 Reflog를 `log` 명령 형식으로 보여준다.
 
@@ -1145,8 +916,6 @@ Checkout 했었던 커밋 두 개만 보여 주는데 구체적인 정보까지 
 
 	     modified repo a bit
 
-It looks like the bottom commit is the one you lost, so you can recover it by creating a new branch at that commit. For example, you can start a branch named `recover-branch` at that commit (ab1afef):
-
 두 번째 커밋이 잃어버린 것이니까 그 커밋을 가리키는 브랜치를 만들어 복구한다. 그 커밋(ab1afef)을 가리키는 브랜치 `recover-branch`를 만든다:
 
 	$ git branch recover-branch ab1afef
@@ -1157,20 +926,14 @@ It looks like the bottom commit is the one you lost, so you can recover it by cr
 	cac0cab538b970a37ea1e769cbbde608743bc96d second commit
 	fdf4fc3344e67ab068f836878b6c4951e3b15f3d first commit
 
-Cool — now you have a branch named `recover-branch` that is where your `master` branch used to be, making the first two commits reachable again. 
-
 `master` 브랜치가 가리키던 커밋을 `recover-branch` 브랜치가 가리키도록 만들어서 그 커밋 두 개는 다시 도달될 수 있게 됐다.
 
-Next, suppose your loss was for some reason not in the reflog — you can simulate that by removing `recover-branch` and deleting the reflog. Now the first two commits aren’t reachable by anything:
-
-이 보다 안좋은 상황을 가정해보자. 잃어 버린 두 커밋을 Reflog에서 못 찾았다. `recover-branch`를 다시 삭제하고 Reflog를 삭제하여 이 상황을 재현하자. 그러면 그 두 커밋은 다시 도달할 수 없게 된다:
+이보다 안좋은 상황을 가정해보자. 잃어 버린 두 커밋을 Reflog에서 못 찾았다. `recover-branch`를 다시 삭제하고 Reflog를 삭제하여 이 상황을 재현하자. 그러면 그 두 커밋은 다시 도달할 수 없게 된다:
 
 	$ git branch -D recover-branch
 	$ rm -Rf .git/logs/
 
-Because the reflog data is kept in the `.git/logs/` directory, you effectively have no reflog. How can you recover that commit at this point? One way is to use the `git fsck` utility, which checks your database for integrity. If you run it with the `--full` option, it shows you all objects that aren’t pointed to by another object:
-
-Reflog 데이터는 `.git/logs/` 디렉토리에 있기 때문에 그 디렉토리를 지우면 Reflog도 다 지워진다. 그러면 커밋을 어떻게 복구할 수 있을까? 한가지 방법이 있는데 `git fsck` 명령으로 데이터베이스의 Integrity를 검사 할 수 있다. 이 명령에 `--full` 옵션을 주고 실행하면 가리키는 개체가 없는 개체를 모두 보여준다.
+Reflog 데이터는 `.git/logs/` 디렉토리에 있기 때문에 그 디렉토리를 지우면 Reflog도 다 지워진다. 그러면 커밋을 어떻게 복구할 수 있을까? 한 가지 방법이 있는데 `git fsck` 명령으로 데이터베이스의 Integrity를 검사 할 수 있다. 이 명령에 `--full` 옵션을 주고 실행하면 가리키는 개체가 없는 개체를 모두 보여준다:
 
 	$ git fsck --full
 	dangling blob d670460b4b4aece5915caf5c68d12f560a9fe3e4
@@ -1178,25 +941,16 @@ Reflog 데이터는 `.git/logs/` 디렉토리에 있기 때문에 그 디렉토�
 	dangling tree aea790b9a58f6cf6f2804eeac9f0abbe9631e4c9
 	dangling blob 7108f7ecb345ee9d0084193f147cdad4d2998293
 
-In this case, you can see your missing commit after the dangling commit. You can recover it the same way, by adding a branch that points to that SHA.
 
-결과에 보이는 저 Dangling 커밋이 잃어 버린 커밋이니까 그 SHA를 가리키는 브랜치를 만들어 복구 한다.
+결과에 보이는 저 Dangling 커밋이 잃어버린 커밋이니까 그 SHA를 가리키는 브랜치를 만들어 복구한다.
 
-### Removing Objects / 개체 삭제 ###
-
-There are a lot of great things about Git, but one feature that can cause issues is the fact that a `git clone` downloads the entire history of the project, including every version of every file. This is fine if the whole thing is source code, because Git is highly optimized to compress that data efficiently. However, if someone at any point in the history of your project added a single huge file, every clone for all time will be forced to download that large file, even if it was removed from the project in the very next commit. Because it’s reachable from the history, it will always be there.
+### 개체 삭제 ###
 
 Git은 너무 굉장하지만 Clone할 때 히스토리를 전부 내려받는 것이 문제가 될 때도 있다. Git은 모든 파일의 모든 버전을 내려받는다. 사실 모든 파일이 소스코드라면 아무 문제 없다. Git은 최적화를 잘해서 데이터를 잘 압축한다. 하지만 누군가 매우 큰 파일을 넣어버리면 Clone할 때마다 그 파일을 내려받는다. 다음 커밋에서 그 파일을 삭제해도 히스토리에는 그대로 남아 있기 때문에 Clone할 때마다 포함된다.
 
-This can be a huge problem when you’re converting Subversion or Perforce repositories into Git. Because you don’t download the whole history in those systems, this type of addition carries few consequences. If you did an import from another system or otherwise find that your repository is much larger than it should be, here is how you can find and remove large objects.
+이것은 Subversion이나 Perforce 저장소를 Git으로 변환할 때에도 문제가 된다. Subversion이나 Perforce 시스템은 전체 히스토리를 내려받는 것이 아니기 때문에 임포트 과정에 문제가 생긴다 (번역확인요). 또한 다른 VCS에서 Git 자장소로 임포트하려고 하는데 Git 저장소의 공간이 충분하지 않으면 너무 큰 개체는 찾아서 삭제해야 한다.
 
-이 것은 Subversion이나 Perforce 저장소를 Git으로 변환할 때에도 문제가 된다. 그 시스템에서 전체 히스토리를 내려받는 것이 아니기 때문에 결국 걸러내야 한다(오역확인 요). 다른 VCS에서 Git 자장소로 임포트하려고 하는데 Git 저장소의 공간이 충분하지 않으면 너무 큰 개체는 찾아서 삭제해야 한다.
-
-Be warned: this technique is destructive to your commit history. It rewrites every commit object downstream from the earliest tree you have to modify to remove a large file reference. If you do this immediately after an import, before anyone has started to base work on the commit, you’re fine — otherwise, you have to notify all contributors that they must rebase their work onto your new commits.
-
-주의: 이 것을 하다가 커밋 히스토리를 망쳐버릴 수 있다. 삭제하거나 수정할 파일이 들어 있는 커밋 이후에 추가된 커밋은 모두 재작성된다. 프로젝트를 임포트하자마자 하는 것은 괜찮다. 아직 아무도 새 저장소를 기반으로 일을 하지 않기 때문이다. 그게 아니면 히스토리를 Rebase한다고 관련된 사람 모두에게 알려야 한다.
-
-To demonstrate, you’ll add a large file into your test repository, remove it in the next commit, find it, and remove it permanently from the repository. First, add a large object to your history:
+주의: 이 작업을 하다가 커밋 히스토리를 망쳐버릴 수 있다. 삭제하거나 수정할 파일이 들어 있는 커밋 이후에 추가된 커밋은 모두 재작성된다. 프로젝트를 임포트하자마자 하는 것은 괜찮다. 아직 아무도 새 저장소를 기반으로 일을 하지 않기 때문이다. 그게 아니면 히스토리를 Rebase한다고 관련된 사람 모두에게 알려야 한다.
 
 이 시나리오를 살펴보기 위해 먼저 저장소에 크기가 큰 파일을 넣고 다음 커밋에서는 삭제할 것이다. 그리고 나서 그 파일을 다시 찾아 저장소에서 삭제한다. 먼저 히스토리에 크기가 큰 개체를 추가한다:
 
@@ -1207,8 +961,6 @@ To demonstrate, you’ll add a large file into your test repository, remove it i
 	 1 files changed, 0 insertions(+), 0 deletions(-)
 	 create mode 100644 git.tbz2
 
-Oops — you didn’t want to add a huge tarball to your project. Better get rid of it:
-
 tar 파일을 넣었지만 너무 크기 때문에 다시 삭제한다:
 
 	$ git rm git.tbz2 
@@ -1218,8 +970,6 @@ tar 파일을 넣었지만 너무 크기 때문에 다시 삭제한다:
 	 1 files changed, 0 insertions(+), 0 deletions(-)
 	 delete mode 100644 git.tbz2
 
-Now, `gc` your database and see how much space you’re using:
-
 `gc` 명령으로 최적화하고 나서 저장소 크기가 얼마나 되는지 확인한다:
 
 	$ git gc
@@ -1228,8 +978,6 @@ Now, `gc` your database and see how much space you’re using:
 	Compressing objects: 100% (16/16), done.
 	Writing objects: 100% (21/21), done.
 	Total 21 (delta 3), reused 15 (delta 1)
-
-You can run the `count-objects` command to quickly see how much space you’re using:
 
 `count-objects` 명령은 사용하는 용량이 얼마나 되는지 알려준다:
 
@@ -1242,35 +990,25 @@ You can run the `count-objects` command to quickly see how much space you’re u
 	prune-packable: 0
 	garbage: 0
 
-The `size-pack` entry is the size of your packfiles in kilobytes, so you’re using 2MB. Before the last commit, you were using closer to 2K — clearly, removing the file from the previous commit didn’t remove it from your history. Every time anyone clones this repository, they will have to clone all 2MB just to get this tiny project, because you accidentally added a big file. Let’s get rid of it.
+`size-pack` 항목의 숫자가 Packfile의 크기다. 단위가 킬로바이트라서 이 Packfile의 크기는 약 2MB이다. 큰 파일을 커밋하기 전에는 약 2K 였다. 파일을 지우고 커밋해도 히스토리에서 삭제되지 않는다. 어쨌든 큰 파일이 하나 들어 있기 때문에 너무 작은 프로젝트인데도 Clone하는 사람마다 2MB씩 필요하다. 이제 그 파일을 삭제해 보자.
 
-`size-pack` 항목의 숫자가 Packfile의 크기다. 단위가 킬로바이트라서 이 Pacfile의 크기는 약 2MB이다. 큰 파일을 커밋하기 전에는 약 2K 였다. 파일을 지우고 커밋해도 히스토리에서 삭제되지 않는다. 어쨌든 큰 파일이 하나 들어 있기 때문에 너무 작은 프로젝트인데도 Clone하는 사람마다 2MB씩 필요하다. 이제 그 파일을 삭제해 보자.
-
-First you have to find it. In this case, you already know what file it is. But suppose you didn’t; how would you identify what file or files were taking up so much space? If you run `git gc`, all the objects are in a packfile; you can identify the big objects by running another plumbing command called `git verify-pack` and sorting on the third field in the output, which is file size. You can also pipe it through the `tail` command because you’re only interested in the last few largest files:
-
-먼저 파일을 찾는다. 뭐, 지금은 무슨 파일인지 이미 알고 있지만 모른다고 가정한다. 어떤 파일이 용량이 큰지 어떻게 찾아 낼까? 게다가 `git gc`를 실행했다면 모든 개체는 Packfile 안에 있어서 더 찾기 어렵다. Plumbing 명령어 `git verify-pack`로 파일과 그 크기 정보를 수집하고 세번째 필드를 기준으로 그 결과를 정렬한다. 세번째 필드가 파일 크기다. 가장 큰 파일 몇 개만 삭제할 것이기 때문에 tail 명령으로 가장 큰 파일 3개만 골라낸다.
+먼저 파일을 찾는다. 뭐, 지금은 무슨 파일인지 이미 알고 있지만 모른다고 가정한다. 어떤 파일이 용량이 큰지 어떻게 찾아 낼까? 게다가 `git gc`를 실행했다면 모든 개체는 Packfile 안에 있어서 더 찾기 어렵다. Plumbing 명령어 `git verify-pack`로 파일과 그 크기 정보를 수집하고 세번째 필드를 기준으로 그 결과를 정렬한다. 세 번째 필드가 파일 크기다. 가장 큰 파일 몇 개만 삭제할 것이기 때문에 tail 명령으로 가장 큰 파일 3개만 골라낸다.
 
 	$ git verify-pack -v .git/objects/pack/pack-3f8c0...bb.idx | sort -k 3 -n | tail -3
 	e3f094f522629ae358806b17daf78246c27c007b blob   1486 734 4667
 	05408d195263d853f09dca71d55116663690c27c blob   12908 3478 1189
 	7a9eb2fba2b1811321254ac360970fc169ba2330 blob   2056716 2056872 5401
 
-The big object is at the bottom: 2MB. To find out what file it is, you’ll use the `rev-list` command, which you used briefly in Chapter 7. If you pass `--objects` to `rev-list`, it lists all the commit SHAs and also the blob SHAs with the file paths associated with them. You can use this to find your blob’s name:
-
 마지막에 있는 개체가 2MB 로 가장 크다. 이제 그 파일이 정확히 무슨 파일인지 알아 내야 한다. 7 장에서 소개했던 `rev-list` 명령에 `--objects` 옵션을 추가하면 커밋의 SHA 값과 Blob 개채의 파일이름, SHA 값을 보여준다. 그 결과에서 해당 Blob의 이름을 찾는다:
 
 	$ git rev-list --objects --all | grep 7a9eb2fb
 	7a9eb2fba2b1811321254ac360970fc169ba2330 git.tbz2
-
-Now, you need to remove this file from all trees in your past. You can easily see what commits modified this file:
 
 히스토리에 있는 모든 Tree 개체에서 이 파일을 삭제해야 한다. 먼저 이 파일을 수정한 커밋을 찾아 본다:
 
 	$ git log --pretty=oneline -- git.tbz2
 	da3f30d019005479c99eb4c3406225613985a1db oops - removed large tarball
 	6df764092f3e7c8f5f94cbe08ee5cf42e92a0289 added git tarball
-
-You must rewrite all the commits downstream from `6df76` to fully remove this file from your Git history. To do so, you use `filter-branch`, which you used in Chapter 6:
 
 이 파일을 히스토리에서 완전히 삭제하면 `6df76` 이후 커밋은 모두 재작성된다. 이 것은 6장에서 배운 `filter-branch` 명령으로 한다:
 
@@ -1280,13 +1018,9 @@ You must rewrite all the commits downstream from `6df76` to fully remove this fi
 	Rewrite da3f30d019005479c99eb4c3406225613985a1db (2/2)
 	Ref 'refs/heads/master' was rewritten
 
-The `--index-filter` option is similar to the `--tree-filter` option used in Chapter 6, except that instead of passing a command that modifies files checked out on disk, you’re modifying your staging area or index each time. Rather than remove a specific file with something like `rm file`, you have to remove it with `git rm --cached` — you must remove it from the index, not from disk. The reason to do it this way is speed — because Git doesn’t have to check out each revision to disk before running your filter, the process can be much, much faster. You can accomplish the same task with `--tree-filter` if you want. The `--ignore-unmatch` option to `git rm` tells it not to error out if the pattern you’re trying to remove isn’t there. Finally, you ask `filter-branch` to rewrite your history only from the `6df7640` commit up, because you know that is where this problem started. Otherwise, it will start from the beginning and will unnecessarily take longer.
-
 `--index-filter` 옵션은 6장에서 배운 `--tree-filter`와 비슷한 옵션이다. `--tree-filter`는 디스크에 Checkout해서 파일을 수정하지만 `--index-filter` 는 Staging Area에서 수정한다. 삭제도 `rm file` 명령이 아니라 `git rm --cached` 명령으로 삭제한다. 디스크에서 삭제하는 것이 아니라 Index에서 삭제하는 것인데 이렇게 하는 이유는 속도가 빠르기 때문이다. Filter를 실행할 때마다 각 리비전을 디스크에 Checkout하지 않기 때문에 이 것이 울트라 캡숑 더 빠르다. 즉, `--tree-filter`로도 같은 것을 할 수 있다. 단지 느릴 뿐이다. 그리고 `git rm` 명령에 `--ignore-unmatch` 옵션을 주면 파일이 없는 경우에 에러를 출력하지 않는다. 마지막으로 문제가 생긴 것은 `6df7640` 커밋부터라서 `filter-branch` 명령에 `6df7640` 커밋부터 재작성하라고 알려줘야 한다. 그렇지 않으면 첫 커밋부터 시작해서 불필요한 것까지 재작성해 버린다.
 
-Your history no longer contains a reference to that file. However, your reflog and a new set of refs that Git added when you did the `filter-branch` under `.git/refs/original` still do, so you have to remove them and then repack the database. You need to get rid of anything that has a pointer to those old commits before you repack:
-
-히스토리에서는 더이상 그 파일을 참조하지 않는다. 하지만 Reflog나 filter-branch를 실행할 때 생기는 참조가 있다. `filter-branch`는 `.git/refs/original` 디렉토리에 실행될 때의 상태를 저장한다. 그래서 이 파일도 삭제하고 데이터베이스를 다시 압축해야 한다. 압축하기 전에 해당 개체를 가리키는 참조는 모두 없애야 한다:
+히스토리에서는 더 이상 그 파일을 가리키지 않는다. 하지만 Reflog나 filter-branch를 실행할 때 생기는 레퍼런스가 있다. `filter-branch`는 `.git/refs/original` 디렉토리에 실행될 때의 상태를 저장한다. 그래서 이 파일도 삭제하고 데이터베이스를 다시 압축해야 한다. 압축하기 전에 해당 개체를 가리키는 레퍼런스는 모두 없애야 한다:
 
 	$ rm -Rf .git/refs/original
 	$ rm -Rf .git/logs/
@@ -1296,8 +1030,6 @@ Your history no longer contains a reference to that file. However, your reflog a
 	Compressing objects: 100% (14/14), done.
 	Writing objects: 100% (19/19), done.
 	Total 19 (delta 3), reused 16 (delta 1)
-
-Let’s see how much space you saved.
 
 공간이 얼마나 절약됐는지 확인한다:
 
@@ -1310,17 +1042,10 @@ Let’s see how much space you saved.
 	prune-packable: 0
 	garbage: 0
 
-The packed repository size is down to 7K, which is much better than 2MB. You can see from the size value that the big object is still in your loose objects, so it’s not gone; but it won’t be transferred on a push or subsequent clone, which is what is important. If you really wanted to, you could remove the object completely by running `git prune --expire`.
-
 압축된 저장소의 크기는 7K로 내려갔다. 2MB보다 한참 작다. 하지만 size 항목은 아직 압축되지 않는 Loose 개체의 크기를 나타내는데 그 항목이 아직 크다. 아직 완전히 제거된 것은 아니다. 하지만 이 개체는 Push할 수도 Clone할 수도 없다. 이 점이 중요하다. 정말로 완전히 삭제하려면 `git prune --expire` 명령으로 삭제해야 한다.
 
-## Summary / 요약 ##
+## 요약 ##
 
-You should have a pretty good understanding of what Git does in the background and, to some degree, how it’s implemented. This chapter has covered a number of plumbing commands — commands that are lower level and simpler than the porcelain commands you’ve learned about in the rest of the book. Understanding how Git works at a lower level should make it easier to understand why it’s doing what it’s doing and also to write your own tools and helping scripts to make your specific workflow work for you.
+Git이 내부적으로 어떻게 동작하는지 잘 이해하였으며 어떻게 구현됐는지까지 꽤 알게 됐을 것이다. 이 장은 저수준 명령어인 Plumbing 명령어들을 설명했다. 다른 장에서 우리가 배웠던 Porcelain 명령어보다는 단순하다. Git이 내부적으로 어떻게 동작하는지 알면 Git이 왜 그렇게 하는가를 더 쉽게 이해할 수 있을 뿐만 아니라 개인적으로 필요한 도구나 스크립트를 만들어 자신의 Workflow를 개선할 수 있다.
 
-Git이 내부적으로 어떻게 동작하는지 잘 배웠고 어떻게 구현됐는지까지 어느 정도 알게 됐을 것이다. 이 장은 저수준 명령어인 Plumbing 명령어들을 설명했다. 다른 장에서 우리가 배웠던 Porcelain 명령어보다는 단순하다. Git이 내부적으로 어떻게 동작하는 지를 알면 Git이 왜 그렇게 하는 가를 더 쉽게 이해할 수 있을 뿐만 아니라 개인적으로 필요한 도구나 스크립트를 만들어 자신의 Workflow를 개선할 수 있다.
-
-Git as a content-addressable filesystem is a very powerful tool that you can easily use as more than just a VCS. I hope you can use your newfound knowledge of Git internals to implement your own cool application of this technology and feel more comfortable using Git in more advanced ways.
-
-Git은 Content-addressble 파일 시스템이기 때문에 VCS 이상의 일을 할 수 있는 매우 강력한 도구다. 나는 독자가 새로 배운 Git 내부에 대한 지식을 활용해서 필요한 어플리케이션을 만들었으면 좋겠다. 그리고 진정 Git을 꼼꼼하고 디테일하게 다룰 수 있게 되길 바란다.
-
+Git은 Content-addressble 파일 시스템이기 때문에 VCS 이상의 일을 할 수 있는 매우 강력한 도구다. 필자는 독자가 새로 배운 Git 내부에 대한 지식을 활용해서 필요한 어플리케이션을 만들었으면 좋겠다. 그리고 진정 Git을 꼼꼼하고 디테일하게 다룰 수 있게 되길 바란다.
