@@ -691,4 +691,3 @@ Now that you have an integer representation of your commit, you need a date for 
 ## 요약 ##
 
 Subversion 프로젝트에서 Git을 사용하거나, 다른 VCS 저장소를 Git 저장소로 손실 없이 옮기는 방법에 대해 알아 봤다. 다음장에서는 Git 내부를 까볼 것이다. 필요하다면 바이트 하나하나 다룰 수 있는 수준이 될 것이다.
-
