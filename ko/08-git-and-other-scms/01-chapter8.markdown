@@ -48,11 +48,11 @@ Git과 Subversion을 이어주는 명령은 `git svn` 으로 시작한다. 이 �
 	Committed revision 3.
 	...
 
-이 명령은 몇 분 걸리지 않지만, 저장하는 위치가 로컬이 아니라 원격 서버라면 시간이 많이 걸린다. 커밋이 100개 이하라고 해도 오래 걸릴 것이다. Subversion은 한번에 커밋을 하나씩 받아서 Push하기 때문에 엄청나게 비효율적이다. 하지만 저장소를 복사하는 다른 방법은 없다.
+이 명령은 몇 분 걸리지 않지만, 저장하는 위치가 로컬이 아니라 리모트 서버라면 시간이 많이 걸린다. 커밋이 100개 이하라고 해도 오래 걸릴 것이다. Subversion은 한번에 커밋을 하나씩 받아서 Push하기 때문에 엄청나게 비효율적이다. 하지만 저장소를 복사하는 다른 방법은 없다.
 
 ### 시작하기 ###
 
-이제 갖고 놀 Subversion 저장소가 하나 준비되었다. `git svn clone` 명령으로 Subversion 저장소 전체를 Git 저장소로 가져올 수 있다. 만약  Subversion 저장소가 로컬에 있는 것이 아니라 원격 서버에 있다면 `file:///tmp/test-svn` 부분에 서버 저장소의 URL을 적어 주면 된다.
+이제 갖고 놀 Subversion 저장소가 하나 준비되었다. `git svn clone` 명령으로 Subversion 저장소 전체를 Git 저장소로 가져올 수 있다. 만약  Subversion 저장소가 로컬에 있는 것이 아니라 리모트 서버에 있다면 `file:///tmp/test-svn` 부분에 서버 저장소의 URL을 적어 주면 된다.
 
 	$ git svn clone file:///tmp/test-svn -T trunk -b branches -t tags
 	Initialized empty Git repository in /Users/schacon/projects/testsvnsync/svn/.git/
@@ -87,7 +87,7 @@ Git에서도 브랜치와 Tag 정보가 제대로 보이는 것을 확인할 수
 	  tags/release-2.0.2rc1
 	  trunk
 
-`git svn` 도구가 원격 브랜치의 이름을 어떻게 짓는지 알아두는 것이 중요하다. 일반적으로 Git 저장소를 복제할 때 모든 브랜치는 `origin/[branch]` 처럼 원격 저장소의 이름을 가지고 모든 브랜치를 로컬에 복제해 놓는다. `git svn`은 우리가 원격 저장소를 단 하나만 사용한다고 가정한다. 그렇기에 원격 저장소의 이름을 붙여서 브랜치를 관리하지 않는다. Git의 Plumbing 명령어인 `show-ref` 명령으로 리모트 브랜치들의 정확한 이름을 확인할 수 있다.
+`git svn` 도구가 리모트 브랜치의 이름을 어떻게 짓는지 알아두는 것이 중요하다. 일반적으로 Git 저장소를 복제할 때 모든 브랜치는 `origin/[branch]` 처럼 리모트 저장소의 이름을 가지고 모든 브랜치를 로컬에 복제해 놓는다. `git svn`은 우리가 리모트 저장소를 단 하나만 사용한다고 가정한다. 그렇기에 리모트 저장소의 이름을 붙여서 브랜치를 관리하지 않는다. Git의 Plumbing 명령어인 `show-ref` 명령으로 리모트 브랜치들의 정확한 이름을 확인할 수 있다.
 
 	$ git show-ref
 	1cbd4904d9982f386d87f88fce1c24ad7c0f0471 refs/heads/master
@@ -106,9 +106,9 @@ Git에서도 브랜치와 Tag 정보가 제대로 보이는 것을 확인할 수
 	0a30dd3b0c795b80212ae723640d4e5d48cabdff refs/remotes/origin/master
 	25812380387fdd55f916652be4881c6f11600d6f refs/remotes/origin/testing
 
-`master` 브랜치가 있는 `gitserver` 서버 저장소와 `master`, `testing` 브랜치가 있는 `origin` 이라는 원격 저장소가 있다.
+`master` 브랜치가 있는 `gitserver` 서버 저장소와 `master`, `testing` 브랜치가 있는 `origin` 이라는 리모트 저장소가 있다.
 
-`git svn`으로 가져온 저장소는 Tag가 일반적인 Git Tag가 아니라 원격 브랜치로 등록되는 점을 잘 기억해두자. Subversion Tag는 tags라는 원격 서버의 브랜치처럼 보일 것이다.
+`git svn`으로 가져온 저장소는 Tag가 일반적인 Git Tag가 아니라 리모트 브랜치로 등록되는 점을 잘 기억해두자. Subversion Tag는 tags라는 리모트 서버의 브랜치처럼 보일 것이다.
 
 ### Subversion 서버에 커밋하기 ###
 
@@ -129,7 +129,7 @@ Git에서도 브랜치와 Tag 정보가 제대로 보이는 것을 확인할 수
 	No changes between current HEAD and refs/remotes/trunk
 	Resetting to the latest refs/remotes/trunk
 
-이 명령은 새로 추가한 커밋을 모두 Subversion에 커밋하고 로컬 Git 커밋을 다시 만든다. 커밋이 다시 만들어지기 때문에 이미 저장된 커밋의 SHA-1 체크섬이 바뀐다. 그래서 원격 Git 저장소와 Subversion 저장소를 함께 사용하는 것은 좋은 생각이 아니다. 그리고 새로 만들어진 커밋을 살펴보면 아래와 같이 `git-svn-id`가 추가된 것을 볼 수 있다:
+이 명령은 새로 추가한 커밋을 모두 Subversion에 커밋하고 로컬 Git 커밋을 다시 만든다. 커밋이 다시 만들어지기 때문에 이미 저장된 커밋의 SHA-1 체크섬이 바뀐다. 그래서 리모트 Git 저장소와 Subversion 저장소를 함께 사용하는 것은 좋은 생각이 아니다. 그리고 새로 만들어진 커밋을 살펴보면 아래와 같이 `git-svn-id`가 추가된 것을 볼 수 있다:
 
 	$ git log -1
 	commit 938b1a547c2cc92033b74d32030e86468294a5c8
@@ -392,21 +392,21 @@ SVN에 기록된 Author 이름은 어떤 것들이 있는지 다음 명령으로
 
 Author 정보 항목이 훨씬 Git답고 `git-svn-id` 항목도 기록되지 않았다.
 
-이제 뒷 정리를 해야 한다. `git svn`이 만들어 준 이상한 브랜치나 Tag를 제거해야 한다. 우선 이상한 원격 Tag를 모두 진짜 Git Tag로 옮긴다.그리고 브랜치도 똑같다. 원격 브랜치를 로컬 브랜치로 옮긴다. 
+이제 뒷 정리를 해야 한다. `git svn`이 만들어 준 이상한 브랜치나 Tag를 제거해야 한다. 우선 이상한 리모트 Tag를 모두 진짜 Git Tag로 옮긴다.그리고 브랜치도 똑같다. 리모트 브랜치를 로컬 브랜치로 옮긴다. 
 
 Tag를 진정한 Git Tag로 만들려면 다음과 같이 한다:
 
 	$ cp -Rf .git/refs/remotes/tags/* .git/refs/tags/
 	$ rm -Rf .git/refs/remotes/tags
 
-`tags/` 로 시작하는 원격 브랜치를 가져다 (Lightweight) Tag로 만들었다.
+`tags/` 로 시작하는 리모트 브랜치를 가져다 (Lightweight) Tag로 만들었다.
 
-`refs/remotes` 밑에 있는 참조는 전부 로컬 브랜치로 만든다:
+`refs/remotes` 밑에 있는 레퍼런스는 전부 로컬 브랜치로 만든다:
 
 	$ cp -Rf .git/refs/remotes/* .git/refs/heads/
 	$ rm -Rf .git/refs/remotes
 
-이제 모든 Tag와 브랜치는 진짜 Git Tag와 브랜치가 됐다. Git 서버를 새로 추가를 하고 지금까지의 작업을 Push하는 일이 남았다. 다음과 같이 원격 서버를 추가한다:
+이제 모든 Tag와 브랜치는 진짜 Git Tag와 브랜치가 됐다. Git 서버를 새로 추가를 하고 지금까지의 작업을 Push하는 일이 남았다. 다음과 같이 리모트 서버를 추가한다:
 
 	$ git remote add origin git@my-git-server:myrepository.git
 
@@ -502,7 +502,7 @@ Run the `git-p4 clone` command to import the Jam project from the Perforce serve
 
 Importer를 만들기 전에 우선 Git이 어떻게 데이터를 저장하는지 알아야 한다. 이미 알고 있듯이 Git은 기본적으로 Snapshot을 가리키는 커밋 개체가 연결된 리스트이다. Snapshot이 뭐고, 그걸 가리키는 커밋은 또 뭐고, 그 커밋의 순서가 어떻게 되는가를 `fast-import`에 알려 주는 것이 해야할 일의 전부다. 그래서 디렉토리마다 Snapshot을 만들고, 커밋 개체를 만들고, 이전 커밋과 연결 시킨다.
 
-7장의 "정책 구현하기" 절에서 했던 것 처럼 Ruby로 스크립트를 작성한다. 나는 Ruby를 많이 사용하기도 하고 Ruby가 읽기도 쉽다. 하지만 자신에게 익숙한 것을 사용하여 표준출력으로 적절한 정보만 출력할 수 있으면 된다. 그리고 이 일을 Windows에서 할 것이라면 줄바꿈 문자에 CR(Carriage Return) 문자가 들어가지 않도록 주의해야 한다. Windows인데도 불구하고 `git fast-import` 명령은 줄바꿈 문자로 CRLF 문자가 아니라 LF(Line Feed) 문자만 허용한다.
+7장의 "정책 구현하기" 절에서 했던 것 처럼 Ruby로 스크립트를 작성한다. 필자는 Ruby를 많이 사용하기도 하고 Ruby가 읽기도 쉽다. 하지만 자신에게 익숙한 것을 사용하여 표준출력으로 적절한 정보만 출력할 수 있으면 된다. 그리고 이 일을 Windows에서 할 것이라면 줄바꿈 문자에 CR(Carriage Return) 문자가 들어가지 않도록 주의해야 한다. Windows인데도 불구하고 `git fast-import` 명령은 줄바꿈 문자로 CRLF 문자가 아니라 LF(Line Feed) 문자만 허용한다.
 
 우선 대상 디렉토리로 이동해서 각 하위 디렉토리를 살펴보자. 각 하위 디렉토리가 Snapshot 하나가 되고 커밋 하나가 된다. 하위 디렉토리마다 다니면서 필요한 정보를 출력한다. 기본적인 로직은 다음과 같다:
 
